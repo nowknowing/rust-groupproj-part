@@ -3,8 +3,10 @@ fn main() {
 
     let r1 = &s; // no problem
     let r2 = &s; // no problem
-
     println!("{}, {}", r1, r2);
+
+    let r3 = &mut s; // no problem
+    println!("{}", r3);
 
     //can borrow. no using of immutable once mutable is borrowed.
     let mut m  = String::from("world");
