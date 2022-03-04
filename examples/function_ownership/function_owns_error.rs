@@ -4,3 +4,10 @@ fn main() {
         result.as_str()
     }
 }
+/*
+error[E0515]: cannot return reference to local variable `result`
+
+   |
+11 |     result.as_str()
+   |     ^^^^^^^^^^^^^^^ returns a reference to data owned by the current function
+   */
