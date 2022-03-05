@@ -9,7 +9,7 @@ fn example2 (x: & i32, y: & i32) -> i32 {
     // *x + *y   no diff
 }
 
-fn example3 (x: &i32, y : & i32) -> i32 {
+fn example3 (x: & i32, y : & i32) -> i32 {
     if *x > *y {
         *x       // dereferencing matters
     } else {
@@ -26,5 +26,7 @@ fn main() {
     println!("x is changed to 42: {}", x);
     println!("sum is now 55: {}", sum);
     println!("larger is : {} than {}", larger, y);
+
+
     
 }
