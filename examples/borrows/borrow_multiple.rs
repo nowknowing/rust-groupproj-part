@@ -3,24 +3,26 @@ fn main() {
 
     let r1 = &s; // no problem
     let r2 = &s; // no problem
-    println!("{}, {}", r1, r2);
+    println!("r1: {}, r2: {}", r1, r2);
 
     let r3 = &mut s; // no problem
-    println!("{}", r3);
+    println!("r3: {}", r3);
+    let r4 = &mut s;
+    println!("r4: {}", r4);
 
     //can borrow. no using of immutable once mutable is borrowed.
     let mut m  = String::from("world");
     let m1 = & m;
-    println!("{}", m1);
+    println!("immutable m1: {}", m1);
     let m2 = &mut m;
-    println!("{}", m2);
+    println!("mutable m2: {}", m2);
 
 
     // can borrow. no mutating once immutable borrowed.
     let mut n = String::from("hey");
     let n1 = &mut n;
-    println!("{}", n1);
+    println!("mutable n1: {}", n1);
     let n2 = & n;
-    println!("{}", n2);
+    println!("immutable n2: {}", n2);
 
 }
