@@ -50,7 +50,7 @@ jobs:
     - name: Create pdf
       run: |
         cd docs/semantics/
-        pdflatex -output-directory=$GITHUB_WORKSPACE ./main.tex
+        pdflatex -output-directory=$GITHUB_WORKSPACE ./static.tex
     - name: Copy pdf
       run: |
         mkdir public
@@ -65,5 +65,5 @@ jobs:
     - name: Store pdf
       uses: actions/upload-artifact@v2
       with:
-        name: main.pdf
-        path: main.pdf
+        name: static.pdf
+        path: static.pdf
