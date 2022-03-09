@@ -54,7 +54,7 @@ jobs:
     - name: Copy pdf
       run: |
         mkdir public
-        cp main.pdf public/
+        cp static.pdf public/
     - name: Deploy
       uses: peaceiris/actions-gh-pages@v3
       if: github.ref == 'refs/heads/primary'
