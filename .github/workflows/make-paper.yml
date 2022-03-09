@@ -6,12 +6,12 @@ name: Generate PDF from TeX and publish
 on:
   # Triggers the workflow on push or pull request events but only for the primary branch
   push:
-    branches: [ docs ]
+    branches: [ docs-static-semantics ]
     paths: 
     - docs/semantics/*
     - .github/workflows/build-paper.yml
   pull_request:
-    branches: [ docs ]
+    branches: [ docs-static-semantics ]
     paths: 
     - docs/semantics/*
     - .github/workflows/build-paper.yml
