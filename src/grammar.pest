@@ -1,0 +1,83 @@
+
+
+declaration = ${
+    "let" ~ WHITESPACE_COMMENT+
+    ~ (declaration_specifier ~ WHITESPACE_COMMENT+)?
+    ~ identifier ~ WHITESPACE_COMMENT*
+    ~ (type_annotation ~ WHITESPACE_COMMENT* ~ initialization? | initialization) ~ WHITESPACE_COMMENT*
+    ~ ";"
+}
+
+type_annotation = !{
+    ":" ~ datatype
+}
+
+initialization = !{
+    "=" ~ expr
+}
+
+declaration_specifier = { "mut" }
+
+datatype = { "i32" | "bool" | "()" | identifier }
+
+expr = { number_literal | string_literal | boolean_literal | identifier }
+
+identifier = @{ keyword ~ (ASCII_ALPHANUMERIC | "_")+ | !keyword ~ !ASCII_DIGIT ~ (ASCII_ALPHANUMERIC | "_")* }
+
+number_literal = @{
+    "-"?
+    ~ ("0" | ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*)
+}
+
+string_literal = ${ "\"" ~ inner ~ "\"" }
+inner = @{ char* }
+char = {
+    !("\"" | "\\") ~ ANY
+    | "\\" ~ ("\"" | "\\" | "/" | "b" | "f" | "n" | "r" | "t")
+    | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
+}
+
+boolean_literal = { "true" | "false" }
+
+keyword = {
+    boolean_literal
+    | "as"
+    | "break"
+    | "const"
+    | "continue"
+    | "crate"
+    | "else"
+    | "enum"
+    | "extern"
+    | "fn"
+    | "for"
+    | "if"
+    | "impl"
+    | "in"
+    | "let"
+    | "loop"
+    | "match"
+    | "mod"
+    | "move"
+    | "mut"
+    | "pub"
+    | "ref"
+    | "return"
+    | "self"
+    | "Self"
+    | "static"
+    | "struct"
+    | "super"
+    | "trait"
+    | "type"
+    | "unsafe"
+    | "use"
+    | "where"
+    | "while"
+}
+
+WHITESPACE_COMMENT = _{ (WHITESPACE|COMMENT) }
+
+WHITESPACE = _{ " " | "\t" | "\r" | "\n" }
+
+COMMENT = _{ "/*" ~ (!"*/" ~ ANY)* ~ "*/" }
