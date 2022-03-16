@@ -20,9 +20,11 @@ declaration_specifier = { "mut" }
 
 datatype = { "i32" | "bool" | "()" | identifier }
 
-expr = { number_literal | string_literal | boolean_literal | identifier }
+expr = { number_literal | string_literal | boolean_literal | identifier | unary_operation }
 
-identifier = @{ keyword ~ (ASCII_ALPHANUMERIC | "_")+ | !keyword ~ !ASCII_DIGIT ~ (ASCII_ALPHANUMERIC | "_")* }
+expr_stmt = { expr ~ ";" }
+
+identifier = @{ keyword ~ (ASCII_ALPHANUMERIC | "_")+ | !keyword ~ !ASCII_DIGIT ~ (ASCII_ALPHANUMERIC | "_")+ }
 
 number_literal = @{
     "-"?
@@ -38,6 +40,22 @@ char = {
 }
 
 boolean_literal = { "true" | "false" }
+
+unary_operation = {
+    unary_operator ~ expr
+}
+
+unary_operator = {
+    "*" | "&" | "!"
+}
+
+binary_operation = {
+    expr ~ binary_operator ~ expr
+}
+
+binary_operator = {
+    "+" | "-" | "*" | "/" | "&&" | "||" | "==" | "<" | "<=" | ">" | ">="
+}
 
 keyword = {
     boolean_literal
