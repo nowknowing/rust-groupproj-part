@@ -1,0 +1,95 @@
+declaration = {
+      ("let " ~ mutable_specifier? ~ identifier ~ (":" ~ datatype)? ~ ("=" ~ expr)?
+        | "static" ~ mutable_specifier? ~ identifier ~ ":" ~ datatype ~ "=" ~ expr) ~ ";"
+}
+
+mutable_specifier = { "mut " }
+
+datatype = @{ "i32" | "bool" | "str" | "()" | reference_datatype }
+
+reference_datatype = { "&mut " ~ datatype | "&" ~ datatype }
+
+block = { "{" ~ sequence ~ expr? ~ "}" }
+
+sequence = { (stmt | block)* }
+
+stmt = { declaration | function_declaration | expr_stmt }
+
+expr_stmt = { expr ~ ";" }
+
+expr = { integer_literal | string_literal | boolean_literal | unary_operation | assignment | block | identifier }
+
+assignment = { identifier ~ "=" ~ expr }
+
+unary_operation = { unary_operator ~ expr }
+
+unary_operator = { "*" | "&mut " | "&" | "!" }
+
+identifier = @{
+      keyword ~ (ASCII_ALPHANUMERIC | "_")
+    | !keyword ~ !ASCII_DIGIT ~ (ASCII_ALPHANUMERIC | "_")+
+}
+
+function_declaration = {
+      "fn " ~ identifier ~ ("<" ~ lifetime_param_list ~ ">")? ~ "(" ~ function_param_list ~ ")"
+      ~ block
+}
+
+lifetime_param_list = { lifetime_type_variable ~ ("," ~ lifetime_type_variable)* | "" }
+lifetime_type_variable = @{ "'" ~ !ASCII_DIGIT ~ ("_" ~ (ASCII_ALPHANUMERIC | "_")+ | !"_" ~ (ASCII_ALPHANUMERIC | "_")+) }
+
+function_param_list = { function_param ~ ("," ~ function_param)* | "" }
+function_param = { identifier ~ ":" ~ function_param_datatype }
+function_param_datatype = { lifetime_datatype | datatype }
+lifetime_datatype = { "&" ~ lifetime_type_variable ~ mutable_specifier? ~ datatype }
+
+keyword = @{
+    boolean_literal
+    | "as"
+    | "break"
+    | "const"
+    | "continue"
+    | "crate"
+    | "else"
+    | "enum"
+    | "extern"
+    | "fn"
+    | "for"
+    | "if"
+    | "impl"
+    | "in"
+    | "let"
+    | "loop"
+    | "match"
+    | "mod"
+    | "move"
+    | "mut"
+    | "pub"
+    | "ref"
+    | "return"
+    | "self"
+    | "Self"
+    | "static"
+    | "struct"
+    | "super"
+    | "trait"
+    | "type"
+    | "unsafe"
+    | "use"
+    | "where"
+    | "while"
+}
+
+boolean_literal = { "true" | "false" }
+
+integer_literal = @{ "-"? ~ ("0" | ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*) }
+
+string_literal = ${ "\"" ~ inner ~ "\"" }
+inner = @{ char* }
+char = {
+    !("\"" | "\\") ~ ANY
+    | "\\" ~ ("\"" | "\\" | "/" | "b" | "f" | "n" | "r" | "t")
+    | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
+}
+
+WHITESPACE = _{ " " | "\t" | "\r" | "\n" }
