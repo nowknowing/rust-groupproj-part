@@ -17,7 +17,9 @@ stmt = { declaration | function_declaration | expr_stmt }
 
 expr_stmt = { expr ~ ";" }
 
-expr = { integer_literal | string_literal | boolean_literal | unary_operation | assignment | block | identifier }
+expr = { integer_literal | string_literal | boolean_literal | unary_operation | assignment | block | function_app | return_val | identifier }
+
+return_val = { "return " ~ expr }
 
 assignment = { identifier ~ "=" ~ expr }
 
@@ -31,9 +33,11 @@ identifier = @{
 }
 
 function_declaration = {
-      "fn " ~ identifier ~ ("<" ~ lifetime_param_list ~ ">")? ~ "(" ~ function_param_list ~ ")"
-      ~ block
+      "fn " ~ identifier ~ ("<" ~ lifetime_param_list ~ ">")? ~ "(" ~ function_param_list ~ ")" ~
+      function_return_type? ~ block
 }
+
+function_return_type = { "->" ~ function_param_datatype }
 
 lifetime_param_list = { lifetime_type_variable ~ ("," ~ lifetime_type_variable)* | "" }
 lifetime_type_variable = @{ "'" ~ !ASCII_DIGIT ~ ("_" ~ (ASCII_ALPHANUMERIC | "_")+ | !"_" ~ (ASCII_ALPHANUMERIC | "_")+) }
@@ -42,6 +46,9 @@ function_param_list = { function_param ~ ("," ~ function_param)* | "" }
 function_param = { identifier ~ ":" ~ function_param_datatype }
 function_param_datatype = { lifetime_datatype | datatype }
 lifetime_datatype = { "&" ~ lifetime_type_variable ~ mutable_specifier? ~ datatype }
+
+function_app = { identifier ~ "(" ~ function_arg_list ~ ")" }
+function_arg_list = { expr ~ ("," ~ expr)* | "" }
 
 keyword = @{
     boolean_literal
