@@ -1,14 +1,17 @@
-extern crate pest;
-#[macro_use]
-extern crate pest_derive;
+mod parser;
 
-use pest::Parser;
-
-#[derive(Parser)]
-#[grammar = "grammar.pest"]
-pub struct OxidoParser;
+use std::env;
+use std::fs;
+use std::process;
 
 fn main() {
-    let successful_parse = OxidoParser::parse(Rule::function_declaration, "fn main () {}");
-    println!("{:?}", successful_parse);
+    let args: Vec<String> = env::args().collect();
+    if args.len() < 2 {
+        println!("No file directory supplied.");
+        process::exit(1);
+    }
+
+    let source = fs::read_to_string(&args[1]).expect("Unable to read file");
+    let result = parser::parse(&source);
+    println!("{:?}", result);
 }
