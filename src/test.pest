@@ -17,15 +17,27 @@ stmt = { declaration | function_declaration | expr_stmt }
 
 expr_stmt = { expr ~ ";" }
 
-expr = { integer_literal | string_literal | boolean_literal | unary_operation | assignment | block | function_app | return_val | identifier }
+expr = { assignment }
+
+primary = { integer_literal | string_literal | boolean_literal | "(" ~ expr ~ ")" | block | function_app | return_val | identifier }
+
+assignment = { identifier ~ "=" ~ assignment | disjunction }
+
+disjunction = { conjunction ~ ("||" ~ conjunction)* }
+
+conjunction = { equality ~ ("&&" ~ equality)* }
+
+equality = { comparison ~ (("!=" | "==") ~ comparison)* }
+
+comparison = { term ~ ((">" | ">=" | "<" | "<=") ~ term)* }
+
+term = { factor ~ (("-" | "+") ~ factor)* }
+
+factor = { unary ~ (("/" | "*") ~ unary)* }
+
+unary = { ("!" | "-" | "&mut " | "&") ~ unary | primary }
 
 return_val = { "return " ~ expr }
-
-assignment = { identifier ~ "=" ~ expr }
-
-unary_operation = { unary_operator ~ expr }
-
-unary_operator = { "*" | "&mut " | "&" | "!" }
 
 identifier = @{
       keyword ~ (ASCII_ALPHANUMERIC | "_")
@@ -100,3 +112,5 @@ char = {
 }
 
 WHITESPACE = _{ " " | "\t" | "\r" | "\n" }
+
+COMMENT = _{ "/*" ~ (!"*/" ~ ANY)* ~ "*/" | "//" ~ (!NEWLINE ~ ANY)* }
