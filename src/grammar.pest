@@ -1,63 +1,68 @@
-
-
-declaration = ${
-    "let" ~ WHITESPACE_COMMENT+
-    ~ (declaration_specifier ~ WHITESPACE_COMMENT+)?
-    ~ identifier ~ WHITESPACE_COMMENT*
-    ~ (type_annotation ~ WHITESPACE_COMMENT* ~ initialization? | initialization) ~ WHITESPACE_COMMENT*
-    ~ ";"
+declaration = {
+      ("let " ~ mutable_specifier? ~ identifier ~ (":" ~ datatype)? ~ ("=" ~ expr)?
+        | "static" ~ mutable_specifier? ~ identifier ~ ":" ~ datatype ~ "=" ~ expr) ~ ";"
 }
 
-type_annotation = !{
-    ":" ~ datatype
-}
+mutable_specifier = { "mut " }
 
-initialization = !{
-    "=" ~ expr
-}
+datatype = @{ "i32" | "bool" | "str" | "()" | reference_datatype }
 
-declaration_specifier = { "mut" }
+reference_datatype = { "&mut " ~ datatype | "&" ~ datatype }
 
-datatype = { "i32" | "bool" | "()" | identifier }
+block = { "{" ~ sequence ~ expr? ~ "}" }
 
-expr = { number_literal | string_literal | boolean_literal | identifier | unary_operation }
+sequence = { (stmt | block)* }
+
+stmt = { declaration | function_declaration | expr_stmt }
 
 expr_stmt = { expr ~ ";" }
 
-identifier = @{ keyword ~ (ASCII_ALPHANUMERIC | "_")+ | !keyword ~ !ASCII_DIGIT ~ (ASCII_ALPHANUMERIC | "_")+ }
+expr = { assignment }
 
-number_literal = @{
-    "-"?
-    ~ ("0" | ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*)
+primary = { integer_literal | string_literal | boolean_literal | "(" ~ expr ~ ")" | block | function_app | return_val | identifier }
+
+assignment = { identifier ~ "=" ~ assignment | disjunction }
+
+disjunction = { conjunction ~ ("||" ~ conjunction)* }
+
+conjunction = { equality ~ ("&&" ~ equality)* }
+
+equality = { comparison ~ (("!=" | "==") ~ comparison)* }
+
+comparison = { term ~ ((">" | ">=" | "<" | "<=") ~ term)* }
+
+term = { factor ~ (("-" | "+") ~ factor)* }
+
+factor = { unary ~ (("/" | "*") ~ unary)* }
+
+unary = { ("!" | "-" | "&mut " | "&") ~ unary | primary }
+
+return_val = { "return " ~ expr }
+
+identifier = @{
+      keyword ~ (ASCII_ALPHANUMERIC | "_")
+    | !keyword ~ !ASCII_DIGIT ~ (ASCII_ALPHANUMERIC | "_")+
 }
 
-string_literal = ${ "\"" ~ inner ~ "\"" }
-inner = @{ char* }
-char = {
-    !("\"" | "\\") ~ ANY
-    | "\\" ~ ("\"" | "\\" | "/" | "b" | "f" | "n" | "r" | "t")
-    | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
+function_declaration = {
+      "fn " ~ identifier ~ ("<" ~ lifetime_param_list ~ ">")? ~ "(" ~ function_param_list ~ ")" ~
+      function_return_type? ~ block
 }
 
-boolean_literal = { "true" | "false" }
+function_return_type = { "->" ~ function_param_datatype }
 
-unary_operation = {
-    unary_operator ~ expr
-}
+lifetime_param_list = { lifetime_type_variable ~ ("," ~ lifetime_type_variable)* | "" }
+lifetime_type_variable = @{ "'" ~ !ASCII_DIGIT ~ ("_" ~ (ASCII_ALPHANUMERIC | "_")+ | !"_" ~ (ASCII_ALPHANUMERIC | "_")+) }
 
-unary_operator = {
-    "*" | "&" | "!"
-}
+function_param_list = { function_param ~ ("," ~ function_param)* | "" }
+function_param = { identifier ~ ":" ~ function_param_datatype }
+function_param_datatype = { lifetime_datatype | datatype }
+lifetime_datatype = { "&" ~ lifetime_type_variable ~ mutable_specifier? ~ datatype }
 
-binary_operation = {
-    expr ~ binary_operator ~ expr
-}
+function_app = { identifier ~ "(" ~ function_arg_list ~ ")" }
+function_arg_list = { expr ~ ("," ~ expr)* | "" }
 
-binary_operator = {
-    "+" | "-" | "*" | "/" | "&&" | "||" | "==" | "<" | "<=" | ">" | ">="
-}
-
-keyword = {
+keyword = @{
     boolean_literal
     | "as"
     | "break"
@@ -94,8 +99,18 @@ keyword = {
     | "while"
 }
 
-WHITESPACE_COMMENT = _{ (WHITESPACE|COMMENT) }
+boolean_literal = { "true" | "false" }
+
+integer_literal = @{ "-"? ~ ("0" | ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*) }
+
+string_literal = ${ "\"" ~ inner ~ "\"" }
+inner = @{ char* }
+char = {
+    !("\"" | "\\") ~ ANY
+    | "\\" ~ ("\"" | "\\" | "/" | "b" | "f" | "n" | "r" | "t")
+    | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
+}
 
 WHITESPACE = _{ " " | "\t" | "\r" | "\n" }
 
-COMMENT = _{ "/*" ~ (!"*/" ~ ANY)* ~ "*/" }
+COMMENT = _{ "/*" ~ (!"*/" ~ ANY)* ~ "*/" | "//" ~ (!NEWLINE ~ ANY)* }
