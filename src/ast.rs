@@ -86,6 +86,9 @@ enum UnaryOperator {
     StringFrom,
     ImmutableBorrow,
     MutableBorrow,
+    Drop,
+    Len,
+    AsStr,
 }
 
 enum BinaryOperator {
