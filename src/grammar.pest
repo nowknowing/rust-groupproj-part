@@ -57,7 +57,8 @@ lifetime_type_variable = @{ "'" ~ !ASCII_DIGIT ~ ("_" ~ (ASCII_ALPHANUMERIC | "_
 function_param_list = { function_param ~ ("," ~ function_param)* | "" }
 function_param = { identifier ~ ":" ~ function_param_datatype }
 function_param_datatype = { lifetime_datatype | datatype }
-lifetime_datatype = { "&" ~ lifetime_type_variable ~ mutable_specifier? ~ datatype }
+lifetime_datatype = { lifetime_datatype_unit+ ~ datatype }
+lifetime_datatype_unit = { "&" ~ lifetime_type_variable ~ mutable_specifier? }
 
 function_app = { identifier ~ "(" ~ function_arg_list ~ ")" }
 function_arg_list = { expr ~ ("," ~ expr)* | "" }
