@@ -64,7 +64,8 @@ enum Expr {
     ReturnExpr(Box<Expr>),
 }
 
-enum PrimitiveFunction {
+#[derive(Debug)]
+enum PrimitiveOperation {
     UnaryOperation {
         operator: UnaryOperator,
         operand: Expr,
@@ -80,6 +81,7 @@ enum PrimitiveFunction {
     }
 }
 
+#[derive(Debug)]
 enum UnaryOperator {
     Not,
     UnaryMinus,
@@ -91,6 +93,7 @@ enum UnaryOperator {
     AsStr,
 }
 
+#[derive(Debug)]
 enum BinaryOperator {
     Plus,
     Minus,
@@ -106,6 +109,7 @@ enum BinaryOperator {
     Or,
 }
 
+#[derive(Debug)]
 enum VariadicOperator {
     Println,
 }
