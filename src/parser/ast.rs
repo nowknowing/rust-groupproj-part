@@ -11,23 +11,14 @@ pub type LifetimeParameter = String;
 
 #[derive(Debug)]
 pub enum DataType {
-    Base(BaseDataType),
-    Func {
-        lifetime_parameters: Vec<LifetimeParameter>,
-        parameter_types: Vec<BaseDataType>,
-        return_type: BaseDataType,
-    },
-}
-
-#[derive(Debug)]
-pub enum BaseDataType {
     Int64,
     Bool,
     Str,
     String,
     Unit,
-    Ref(Option<LifetimeParameter>, Box<BaseDataType>),
-    MutRef(Option<LifetimeParameter>, Box<BaseDataType>),
+    Ref(Option<LifetimeParameter>, Box<DataType>),
+    MutRef(Option<LifetimeParameter>, Box<DataType>),
+    Func(Vec<LifetimeParameter>, Vec<DataType>, Box<DataType>),
 }
 
 pub type Identifier = String;

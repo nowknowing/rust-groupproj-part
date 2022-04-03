@@ -1,7 +1,7 @@
 mod ast;
 
 use pest_consume::{match_nodes, Error, Parser};
-use ast::{Expr, Literal, SourceLocation};
+use ast::{Expr, Literal, DataType, SourceLocation};
 
 #[derive(Parser)]
 #[grammar = "grammar.pest"]
@@ -16,17 +16,58 @@ impl OxidoParser {
         println!("{:#?}", input);
         Ok(())
     }
-    fn mutable_specifier(input: Node) -> Result<()> {
-        println!("{:#?}", input);
-        Ok(())
+    fn mutable_specifier(input: Node) -> Result<bool> {
+        // println!("{:#?}", input);
+        Ok(true)
     }
-    fn datatype(input: Node) -> Result<()> {
-        println!("{:#?}", input);
-        Ok(())
+    fn datatype(input: Node) -> Result<DataType> {
+        // println!("{:#?}", input);
+        Ok(match input.as_str() {
+            "i32" => DataType::Int64,
+            "bool" => DataType::Bool,
+            "str" => DataType::Str,
+            "String" => DataType::String,
+            "()" => DataType::Unit,
+            _ => match_nodes!(input.into_children();
+                    [function_datatype(f)] => f,
+                    [reference_datatype(d)] => d),
+        })
     }
-    fn reference_datatype(input: Node) -> Result<()> {
-        println!("{:#?}", input);
-        Ok(())
+    fn reference_datatype(input: Node) -> Result<DataType> {
+        // println!("{:#?}", input);
+        let create_reference_type = |lifetime, is_mutable, datatype| match is_mutable {
+            true => DataType::MutRef(lifetime, Box::from(datatype)),
+            false => DataType::Ref(lifetime, Box::from(datatype)),
+        };
+
+        Ok(match_nodes!(input.into_children();
+            [datatype(d)] =>
+                create_reference_type(None, false, d),
+            [lifetime_type_variable(l), datatype(d)] =>
+                create_reference_type(Some(l), false, d),
+            [mutable_specifier(_m), datatype(d)] => 
+                create_reference_type(None, true, d),
+            [lifetime_type_variable(l), mutable_specifier(_m), datatype(d)] => 
+                create_reference_type(Some(l), true, d),
+        ))
+    }
+    fn function_datatype(input: Node) -> Result<DataType> {
+        // println!("{:#?}", input);
+        Ok(match_nodes!(input.into_children();
+            [function_datatype_param_list(params), function_return_type(mut r)..] =>
+                match r.next() {
+                    None =>
+                        DataType::Func(vec![], params, Box::from(DataType::Unit)), 
+                    Some(return_type) =>
+                        DataType::Func(vec![], params, Box::from(return_type)),
+                }
+        ))
+    }
+    fn function_datatype_param_list(input: Node) -> Result<Vec<DataType>> {
+        // println!("{:#?}", input);
+        Ok(match_nodes!(input.into_children();
+            [datatype(d)..] => d.collect(),
+        ))
     }
     fn block(input: Node) -> Result<()> {
         println!("{:#?}", input);
@@ -101,17 +142,19 @@ impl OxidoParser {
         println!("{:#?}", input);
         Ok(())
     }
-    fn function_return_type(input: Node) -> Result<()> {
-        println!("{:#?}", input);
-        Ok(())
+    fn function_return_type(input: Node) -> Result<DataType> {
+        // println!("{:#?}", input);
+        Ok(match_nodes!(input.into_children();
+            [datatype(d)] => d,
+        ))
     }
     fn lifetime_param_list(input: Node) -> Result<()> {
         println!("{:#?}", input);
         Ok(())
     }
-    fn lifetime_type_variable(input: Node) -> Result<()> {
-        println!("{:#?}", input);
-        Ok(())
+    fn lifetime_type_variable(input: Node) -> Result<String> {
+        // println!("{:#?}", input);
+        Ok(String::from(input.as_str()))
     }
     fn function_param_list(input: Node) -> Result<()> {
         println!("{:#?}", input);
@@ -164,8 +207,8 @@ impl OxidoParser {
     }
 }
 
-pub fn parse(program: &str) -> Result<Expr> {
+pub fn parse(program: &str) -> Result<DataType> {
     // let program = format!("{{ {} }}", program);
-    let inputs = OxidoParser::parse(Rule::identifier, &program)?;
-    OxidoParser::identifier(inputs.single()?)
+    let inputs = OxidoParser::parse(Rule::datatype, &program)?;
+    OxidoParser::datatype(inputs.single()?)
 }
