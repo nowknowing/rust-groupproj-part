@@ -3,14 +3,14 @@ use std::fmt::Debug;
 
 #[derive(Debug)]
 pub struct SourceLocation {
-    line: usize,
-    col: usize,
+    pub line: usize,
+    pub col: usize,
 }
 
-type LifetimeParameter = String;
+pub type LifetimeParameter = String;
 
 #[derive(Debug)]
-enum DataType {
+pub enum DataType {
     Base(BaseDataType),
     Func {
         lifetime_parameters: Vec<LifetimeParameter>,
@@ -20,7 +20,7 @@ enum DataType {
 }
 
 #[derive(Debug)]
-enum BaseDataType {
+pub enum BaseDataType {
     Int64,
     Bool,
     Str,
