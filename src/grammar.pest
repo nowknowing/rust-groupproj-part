@@ -35,7 +35,7 @@ term = { factor ~ (("-" | "+") ~ factor)* }
 
 factor = { unary ~ (("/" | "*") ~ unary)* }
 
-unary = { ("!" | "-" | "&mut " | "&") ~ unary | primary }
+unary = { ("!" | "-" | "&mut " | "&" | "*") ~ unary | primary }
 
 return_val = { "return " ~ expr }
 
@@ -60,7 +60,7 @@ function_param = { identifier ~ ":" ~ datatype }
 function_app = { identifier ~ "(" ~ function_arg_list ~ ")" }
 function_arg_list = { expr ~ ("," ~ expr)* | "" }
 
-keyword = @{
+keyword = _{
     boolean_literal
     | "as"
     | "break"

@@ -1,4 +1,4 @@
-use pest_consume::{Error, Parser};
+use pest_consume::{match_nodes, Error, Parser};
 
 #[derive(Parser)]
 #[grammar = "grammar.pest"]
@@ -113,23 +113,11 @@ impl OxidoParser {
         println!("{:#?}", input);
         Ok(())
     }
-    fn function_param_datatype(input: Node) -> Result<()> {
-        println!("{:#?}", input);
-        Ok(())
-    }
-    fn lifetime_datatype(input: Node) -> Result<()> {
-        println!("{:#?}", input);
-        Ok(())
-    }
     fn function_app(input: Node) -> Result<()> {
         println!("{:#?}", input);
         Ok(())
     }
     fn function_arg_list(input: Node) -> Result<()> {
-        println!("{:#?}", input);
-        Ok(())
-    }
-    fn keyword(input: Node) -> Result<()> {
         println!("{:#?}", input);
         Ok(())
     }
