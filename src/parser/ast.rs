@@ -1,6 +1,12 @@
 #![allow(dead_code)]
 use std::fmt::Debug;
 
+#[derive(Debug)]
+pub struct SourceLocation {
+    line: usize,
+    col: usize,
+}
+
 type LifetimeParameter = String;
 
 #[derive(Debug)]
@@ -24,10 +30,10 @@ enum BaseDataType {
     MutRef(Option<LifetimeParameter>, Box<BaseDataType>),
 }
 
-type Identifier = String;
+pub type Identifier = String;
 
 #[derive(Debug)]
-enum Literal {
+pub enum Literal {
     IntLiteral(i64),
     BoolLiteral(bool),
     StringLiteral(String),
@@ -35,38 +41,40 @@ enum Literal {
 }
 
 #[derive(Debug)]
-enum SequenceStmt {
+pub enum SequenceStmt {
     Stmt(Stmt),
     Block(Block),
 }
 
-type Sequence = Vec<SequenceStmt>;
+pub type Sequence = Vec<SequenceStmt>;
 
 #[derive(Debug)]
-struct Block {
+pub struct Block {
     statements: Sequence,
     last_expression: Option<Expr>,
 }
 
 #[derive(Debug)]
-enum Expr {
-    IdentifierExpr(Identifier),
-    LiteralExpr(Literal),
-    BlockExpr(Box<Block>),
-    PrimitiveOperationExpr(Box<PrimitiveOperation>),
+pub enum Expr {
+    IdentifierExpr(Identifier, SourceLocation),
+    LiteralExpr(Literal, SourceLocation),
+    BlockExpr(Box<Block>, SourceLocation),
+    PrimitiveOperationExpr(Box<PrimitiveOperation>, SourceLocation),
     AssignmentExpr {
         name: Identifier,
         value: Box<Expr>,
+        position: SourceLocation,
     },
     ApplicationExpr {
         name: Identifier,
         arguments: Vec<Expr>,
+        position: SourceLocation,
     },
-    ReturnExpr(Box<Expr>),
+    ReturnExpr(Box<Expr>, SourceLocation),
 }
 
 #[derive(Debug)]
-enum PrimitiveOperation {
+pub enum PrimitiveOperation {
     UnaryOperation {
         operator: UnaryOperator,
         operand: Expr,
@@ -83,7 +91,7 @@ enum PrimitiveOperation {
 }
 
 #[derive(Debug)]
-enum UnaryOperator {
+pub enum UnaryOperator {
     Not,
     UnaryMinus,
     StringFrom,
@@ -95,7 +103,7 @@ enum UnaryOperator {
 }
 
 #[derive(Debug)]
-enum BinaryOperator {
+pub enum BinaryOperator {
     Plus,
     Minus,
     Times,
@@ -111,25 +119,27 @@ enum BinaryOperator {
 }
 
 #[derive(Debug)]
-enum VariadicOperator {
+pub enum VariadicOperator {
     Println,
 }
 
-type FuncParameter = (Identifier, DataType);
+pub type FuncParameter = (Identifier, DataType);
 
 #[derive(Debug)]
-enum Stmt {
+pub enum Stmt {
     LetStmt {
         name: Identifier,
         is_mutable: bool,
         annotation: Option<DataType>,
         value: Expr,
+        position: SourceLocation,
     },
     StaticStmt {
         name: Identifier,
         is_mutable: bool,
         annotation: DataType,
         value: Expr,
+        position: SourceLocation,
     },
     FuncDeclaration {
         name: Identifier,
@@ -137,6 +147,7 @@ enum Stmt {
         parameters: Vec<FuncParameter>,
         return_type: DataType,
         body: Block,
+        position: SourceLocation,
     },
     ExprStmt(Expr),
 }
