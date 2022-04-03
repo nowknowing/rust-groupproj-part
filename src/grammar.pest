@@ -5,9 +5,16 @@ declaration = {
 
 mutable_specifier = { "mut " }
 
-datatype = { "i32" | "bool" | "str" | "()" | reference_datatype }
+datatype = { "i32" | "bool" | "str" | "String" | "()" | function_datatype | reference_datatype }
 
 reference_datatype = { "&" ~ lifetime_type_variable? ~ mutable_specifier? ~ datatype }
+
+function_datatype = {
+    "fn" ~ "(" ~ function_datatype_param_list ~ ")"
+    ~ function_datatype_return_type?
+}
+function_datatype_param_list = { datatype ~ ("," ~ datatype)* | "" }
+function_datatype_return_type = { "->" ~ datatype }
 
 block = { "{" ~ sequence ~ expr? ~ "}" }
 
