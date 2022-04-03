@@ -1,4 +1,7 @@
+mod ast;
+
 use pest_consume::{match_nodes, Error, Parser};
+use ast::{Expr, Literal, SourceLocation};
 
 #[derive(Parser)]
 #[grammar = "grammar.pest"]
@@ -121,9 +124,17 @@ impl OxidoParser {
         println!("{:#?}", input);
         Ok(())
     }
-    fn boolean_literal(input: Node) -> Result<()> {
-        println!("{:#?}", input);
-        Ok(())
+    fn boolean_literal(input: Node) -> Result<Expr> {
+        input.as_str()
+            .parse::<bool>()
+            .map(|b| -> Expr {
+                let (line, col) = input.as_span().start_pos().line_col();
+                Expr::LiteralExpr(
+                    Literal::BoolLiteral(b),
+                    SourceLocation { line, col }
+                )
+            })
+            .map_err(|e| input.error(e))
     }
     fn integer_literal(input: Node) -> Result<()> {
         println!("{:#?}", input);
@@ -143,8 +154,8 @@ impl OxidoParser {
     }
 }
 
-pub fn parse(program: &str) -> Result<()> {
-    let program = format!("{{ {} }}", program);
-    let inputs = OxidoParser::parse(Rule::block, &program)?;
-    OxidoParser::block(inputs.single()?)
+pub fn parse(program: &str) -> Result<Expr> {
+    // let program = format!("{{ {} }}", program);
+    let inputs = OxidoParser::parse(Rule::boolean_literal, &program)?;
+    OxidoParser::boolean_literal(inputs.single()?)
 }
