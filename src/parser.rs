@@ -157,14 +157,6 @@ impl OxidoParser {
         );
         Ok(parsed_expr)
     }
-    fn inner(input: Node) -> Result<()> {
-        println!("{:#?}", input);
-        Ok(())
-    }
-    fn char(input: Node) -> Result<()> {
-        println!("{:#?}", input);
-        Ok(())
-    }
 }
 
 pub fn parse(program: &str) -> Result<Expr> {
