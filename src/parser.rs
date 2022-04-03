@@ -17,11 +17,9 @@ impl OxidoParser {
         Ok(())
     }
     fn mutable_specifier(input: Node) -> Result<bool> {
-        // println!("{:#?}", input);
         Ok(true)
     }
     fn datatype(input: Node) -> Result<DataType> {
-        // println!("{:#?}", input);
         Ok(match input.as_str() {
             "i32" => DataType::Int64,
             "bool" => DataType::Bool,
@@ -34,7 +32,6 @@ impl OxidoParser {
         })
     }
     fn reference_datatype(input: Node) -> Result<DataType> {
-        // println!("{:#?}", input);
         let create_reference_type = |lifetime, is_mutable, datatype| match is_mutable {
             true => DataType::MutRef(lifetime, Box::from(datatype)),
             false => DataType::Ref(lifetime, Box::from(datatype)),
@@ -52,8 +49,10 @@ impl OxidoParser {
         ))
     }
     fn function_datatype(input: Node) -> Result<DataType> {
-        // println!("{:#?}", input);
-        Ok(match_nodes!(input.into_children();
+        Err(input.error("Function pointers are currently unsupported"))
+
+        // Uncomment the following implementation when function pointers are supported. 
+        /* Ok(match_nodes!(input.into_children();
             [function_datatype_param_list(params), function_return_type(mut r)..] =>
                 match r.next() {
                     None =>
@@ -61,10 +60,9 @@ impl OxidoParser {
                     Some(return_type) =>
                         DataType::Func(vec![], params, Box::from(return_type)),
                 }
-        ))
+        )) */
     }
     fn function_datatype_param_list(input: Node) -> Result<Vec<DataType>> {
-        // println!("{:#?}", input);
         Ok(match_nodes!(input.into_children();
             [datatype(d)..] => d.collect(),
         ))
@@ -143,7 +141,6 @@ impl OxidoParser {
         Ok(())
     }
     fn function_return_type(input: Node) -> Result<DataType> {
-        // println!("{:#?}", input);
         Ok(match_nodes!(input.into_children();
             [datatype(d)] => d,
         ))
@@ -153,7 +150,6 @@ impl OxidoParser {
         Ok(())
     }
     fn lifetime_type_variable(input: Node) -> Result<String> {
-        // println!("{:#?}", input);
         Ok(String::from(input.as_str()))
     }
     fn function_param_list(input: Node) -> Result<()> {
