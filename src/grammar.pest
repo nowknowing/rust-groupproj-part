@@ -11,10 +11,9 @@ reference_datatype = { "&" ~ lifetime_type_variable? ~ mutable_specifier? ~ data
 
 function_datatype = {
     "fn" ~ "(" ~ function_datatype_param_list ~ ")"
-    ~ function_datatype_return_type?
+    ~ function_return_type?
 }
 function_datatype_param_list = { datatype ~ ("," ~ datatype)* | "" }
-function_datatype_return_type = { "->" ~ datatype }
 
 block = { "{" ~ sequence ~ expr? ~ "}" }
 
