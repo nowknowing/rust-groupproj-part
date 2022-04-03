@@ -88,9 +88,14 @@ impl OxidoParser {
         println!("{:#?}", input);
         Ok(())
     }
-    fn identifier(input: Node) -> Result<()> {
-        println!("{:#?}", input);
-        Ok(())
+    fn identifier(input: Node) -> Result<Expr> {
+        let (line, col) = input.as_span().start_pos().line_col();
+        let identifier = String::from(input.as_str());
+        let ident_expr = Expr::IdentifierExpr(
+            identifier,
+            SourceLocation { line, col }
+        );
+        Ok(ident_expr)
     }
     fn function_declaration(input: Node) -> Result<()> {
         println!("{:#?}", input);
@@ -151,16 +156,16 @@ impl OxidoParser {
     fn string_literal(input: Node) -> Result<Expr> {
         let (line, col) = input.as_span().start_pos().line_col();
         let s = input.into_children().as_pairs().as_str();
-        let parsed_expr = Expr::LiteralExpr(
+        let str_expr = Expr::LiteralExpr(
             Literal::StringLiteral(String::from(s)),
             SourceLocation { line, col }
         );
-        Ok(parsed_expr)
+        Ok(str_expr)
     }
 }
 
 pub fn parse(program: &str) -> Result<Expr> {
     // let program = format!("{{ {} }}", program);
-    let inputs = OxidoParser::parse(Rule::string_literal, &program)?;
-    OxidoParser::string_literal(inputs.single()?)
+    let inputs = OxidoParser::parse(Rule::identifier, &program)?;
+    OxidoParser::identifier(inputs.single()?)
 }
