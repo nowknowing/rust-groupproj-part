@@ -5,9 +5,9 @@ declaration = {
 
 mutable_specifier = { "mut " }
 
-datatype = @{ "i32" | "bool" | "str" | "()" | reference_datatype }
+datatype = { "i32" | "bool" | "str" | "()" | reference_datatype }
 
-reference_datatype = { "&mut " ~ datatype | "&" ~ datatype }
+reference_datatype = { "&" ~ lifetime_type_variable? ~ mutable_specifier? ~ datatype }
 
 block = { "{" ~ sequence ~ expr? ~ "}" }
 
@@ -49,16 +49,13 @@ function_declaration = {
       function_return_type? ~ block
 }
 
-function_return_type = { "->" ~ function_param_datatype }
+function_return_type = { "->" ~ datatype }
 
 lifetime_param_list = { lifetime_type_variable ~ ("," ~ lifetime_type_variable)* | "" }
 lifetime_type_variable = @{ "'" ~ !ASCII_DIGIT ~ ("_" ~ (ASCII_ALPHANUMERIC | "_")+ | !"_" ~ (ASCII_ALPHANUMERIC | "_")+) }
 
 function_param_list = { function_param ~ ("," ~ function_param)* | "" }
-function_param = { identifier ~ ":" ~ function_param_datatype }
-function_param_datatype = { lifetime_datatype | datatype }
-lifetime_datatype = { lifetime_datatype_unit+ ~ datatype }
-lifetime_datatype_unit = { "&" ~ lifetime_type_variable ~ mutable_specifier? }
+function_param = { identifier ~ ":" ~ datatype }
 
 function_app = { identifier ~ "(" ~ function_arg_list ~ ")" }
 function_arg_list = { expr ~ ("," ~ expr)* | "" }
