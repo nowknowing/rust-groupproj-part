@@ -53,6 +53,7 @@ enum Expr {
     IdentifierExpr(Identifier),
     LiteralExpr(Literal),
     BlockExpr(Box<Block>),
+    PrimitiveOperationExpr(Box<PrimitiveOperation>),
     AssignmentExpr {
         name: Identifier,
         value: Box<Expr>,
