@@ -148,9 +148,14 @@ impl OxidoParser {
             })
             .map_err(|e| input.error(e))
     }
-    fn string_literal(input: Node) -> Result<()> {
-        println!("{:#?}", input);
-        Ok(())
+    fn string_literal(input: Node) -> Result<Expr> {
+        let (line, col) = input.as_span().start_pos().line_col();
+        let s = input.into_children().as_pairs().as_str();
+        let parsed_expr = Expr::LiteralExpr(
+            Literal::StringLiteral(String::from(s)),
+            SourceLocation { line, col }
+        );
+        Ok(parsed_expr)
     }
     fn inner(input: Node) -> Result<()> {
         println!("{:#?}", input);
@@ -164,6 +169,6 @@ impl OxidoParser {
 
 pub fn parse(program: &str) -> Result<Expr> {
     // let program = format!("{{ {} }}", program);
-    let inputs = OxidoParser::parse(Rule::integer_literal, &program)?;
-    OxidoParser::integer_literal(inputs.single()?)
+    let inputs = OxidoParser::parse(Rule::string_literal, &program)?;
+    OxidoParser::string_literal(inputs.single()?)
 }
