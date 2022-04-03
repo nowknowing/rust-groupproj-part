@@ -99,7 +99,7 @@ keyword = _{
 
 boolean_literal = { "true" | "false" }
 
-integer_literal = @{ "-"? ~ ("0" | ASCII_NONZERO_DIGIT ~ ASCII_DIGIT*) }
+integer_literal = { ASCII_DIGIT+ }
 
 string_literal = ${ "\"" ~ inner ~ "\"" }
 inner = @{ char* }
