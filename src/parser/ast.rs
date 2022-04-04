@@ -85,9 +85,10 @@ pub enum PrimitiveOperation {
 pub enum UnaryOperator {
     Not,
     UnaryMinus,
-    StringFrom,
     ImmutableBorrow,
     MutableBorrow,
+    Dereference,
+    StringFrom,
     Drop,
     Len,
     AsStr,

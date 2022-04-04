@@ -41,12 +41,13 @@ term = { factor ~ (("-" | "+") ~ factor)* }
 
 factor = { unary ~ (("/" | "*") ~ unary)* }
 
-unary = { ("!" | "-" | "&mut " | "&" | "*") ~ unary | primary }
+unary = { unary_operator ~ unary | primary }
+unary_operator = { "!" | "-" | "&mut " | "&" | "*" }
 
 return_val = { "return " ~ expr }
 
 identifier = @{
-      keyword ~ (ASCII_ALPHANUMERIC | "_")
+      keyword ~ (ASCII_ALPHANUMERIC | "_")+
     | !keyword ~ !ASCII_DIGIT ~ (ASCII_ALPHANUMERIC | "_")+
 }
 
