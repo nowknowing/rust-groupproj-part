@@ -1,7 +1,7 @@
 mod ast;
 
 use pest_consume::{match_nodes, Error, Parser};
-use ast::{Expr, Literal, DataType, SourceLocation};
+use ast::{Expr, Literal, DataType, PrimitiveOperation, UnaryOperator, SourceLocation};
 
 #[derive(Parser)]
 #[grammar = "grammar.pest"]
@@ -87,9 +87,15 @@ impl OxidoParser {
         println!("{:#?}", input);
         Ok(())
     }
-    fn primary(input: Node) -> Result<()> {
-        println!("{:#?}", input);
-        Ok(())
+    fn primary(input: Node) -> Result<Expr> {
+        // println!("{:#?}", input);
+        // TODO: match all cases.
+        Ok(match_nodes!(input.into_children();
+            [integer_literal(expr)] => expr,
+            [string_literal(expr)] => expr,
+            [boolean_literal(expr)] => expr,
+            [identifier(expr)] => expr,
+        ))
     }
     fn assignment(input: Node) -> Result<()> {
         println!("{:#?}", input);
@@ -119,9 +125,37 @@ impl OxidoParser {
         println!("{:#?}", input);
         Ok(())
     }
-    fn unary(input: Node) -> Result<()> {
-        println!("{:#?}", input);
-        Ok(())
+    fn unary(input: Node) -> Result<Expr> {
+        let get_op_type = |op| match op {
+            "!" => Ok(UnaryOperator::Not),
+            "-" => Ok(UnaryOperator::UnaryMinus),
+            "&mut " => Ok(UnaryOperator::MutableBorrow),
+            "&" => Ok(UnaryOperator::ImmutableBorrow),
+            "*" => Ok(UnaryOperator::Dereference),
+            unsupported_op@_ =>
+                Err(format!("The \"{}\" operator is unsupported", unsupported_op)),
+        };
+
+        let create_op_expr = |op_type, expr, line, col| Expr::PrimitiveOperationExpr(
+            Box::from(PrimitiveOperation::UnaryOperation {
+                operator: op_type,
+                operand: expr,
+            }),
+            SourceLocation { line, col },
+        );
+
+        let (line, col) = input.as_span().start_pos().line_col();
+
+        match_nodes!(input.children();
+            [unary_operator(op), unary(expr)] => match get_op_type(&op) {
+                Ok(op_type) => Ok(create_op_expr(op_type, expr, line, col)),
+                Err(msg) => Err(input.error(msg)),
+            },
+            [primary(expr)] => Ok(expr),
+        )
+    }
+    fn unary_operator(input: Node) -> Result<String> {
+        Ok(String::from(input.as_str()))
     }
     fn return_val(input: Node) -> Result<()> {
         println!("{:#?}", input);
@@ -203,8 +237,8 @@ impl OxidoParser {
     }
 }
 
-pub fn parse(program: &str) -> Result<DataType> {
+pub fn parse(program: &str) -> Result<Expr> {
     // let program = format!("{{ {} }}", program);
-    let inputs = OxidoParser::parse(Rule::datatype, &program)?;
-    OxidoParser::datatype(inputs.single()?)
+    let inputs = OxidoParser::parse(Rule::unary, &program)?;
+    OxidoParser::unary(inputs.single()?)
 }

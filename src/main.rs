@@ -13,5 +13,5 @@ fn main() {
 
     let source = fs::read_to_string(&args[1]).expect("Unable to read file");
     let result = parser::parse(&source);
-    println!("{:?}", result);
+    println!("{:#?}", result);
 }
