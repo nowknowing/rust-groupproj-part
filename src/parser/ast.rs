@@ -1,7 +1,11 @@
 #![allow(dead_code)]
 use std::fmt::Debug;
 
-#[derive(Debug)]
+pub trait AST {
+    fn get_source_location(&self) -> SourceLocation; 
+}
+
+#[derive(Debug, Copy, Clone)]
 pub struct SourceLocation {
     pub line: usize,
     pub col: usize,
@@ -62,6 +66,20 @@ pub enum Expr {
         position: SourceLocation,
     },
     ReturnExpr(Box<Expr>, SourceLocation),
+}
+
+impl AST for Expr {
+    fn get_source_location(&self) -> SourceLocation {
+        match self {
+            Expr::IdentifierExpr(_, position) => position.clone(),
+            Expr::LiteralExpr(_, position) => position.clone(),
+            Expr::BlockExpr(_, position) => position.clone(),
+            Expr::PrimitiveOperationExpr(_, position) => position.clone(),
+            Expr::AssignmentExpr { position, .. } => position.clone(),
+            Expr::ApplicationExpr { position, .. } => position.clone(),
+            Expr::ReturnExpr(_, position) => position.clone(),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -142,4 +160,15 @@ pub enum Stmt {
         position: SourceLocation,
     },
     ExprStmt(Expr),
+}
+
+impl AST for Stmt {
+    fn get_source_location(&self) -> SourceLocation {
+        match self {
+            Stmt::LetStmt { position, .. } => position.clone(),
+            Stmt::StaticStmt { position, .. } => position.clone(),
+            Stmt::FuncDeclaration { position, .. } => position.clone(),
+            Stmt::ExprStmt(expr) => expr.get_source_location(),
+        }
+    }
 }

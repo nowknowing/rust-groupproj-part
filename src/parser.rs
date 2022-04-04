@@ -1,7 +1,7 @@
 mod ast;
 
 use pest_consume::{match_nodes, Error, Parser};
-use ast::{Expr, Literal, DataType, PrimitiveOperation, UnaryOperator, SourceLocation};
+use ast::{AST, Expr, Literal, DataType, PrimitiveOperation, UnaryOperator, BinaryOperator, SourceLocation};
 
 #[derive(Parser)]
 #[grammar = "grammar.pest"]
@@ -121,9 +121,73 @@ impl OxidoParser {
         println!("{:#?}", input);
         Ok(())
     }
-    fn factor(input: Node) -> Result<()> {
-        println!("{:#?}", input);
-        Ok(())
+    fn factor(input: Node) -> Result<Expr> {
+        let create_binary_expr = |operator, first_operand, second_operand, src_location| 
+            Expr::PrimitiveOperationExpr(
+                Box::from(PrimitiveOperation::BinaryOperation {
+                    operator,
+                    first_operand,
+                    second_operand,
+                }),
+                src_location,
+            );
+
+        match_nodes!(input.children();
+            [unary(initial_operand), factor_helper(repetitions)..] => {
+                let mut repetitions = repetitions.rev().peekable();
+                match repetitions.next() {
+                    Some((op, expr)) => {
+                        let mut current_op = op;
+                        let mut second_operand = expr;
+
+                        if repetitions.peek().is_none() {
+                            let src_location = initial_operand.get_source_location();
+                            Ok(create_binary_expr(
+                                current_op,
+                                initial_operand,
+                                second_operand,
+                                src_location,
+                            ))
+                        } else {
+                            for (op, first_operand) in repetitions {
+                                let src_location = first_operand.get_source_location();
+                                second_operand = create_binary_expr(
+                                    current_op,
+                                    first_operand,
+                                    second_operand,
+                                    src_location,
+                                );
+                                current_op = op;
+                            }
+
+                            let src_location = initial_operand.get_source_location();
+                            Ok(create_binary_expr(
+                                current_op,
+                                initial_operand,
+                                second_operand,
+                                src_location,
+                            ))
+                        }
+                    },
+                    None => Ok(initial_operand),
+                }
+            },
+        )
+    }
+    fn factor_operator(input: Node) -> Result<BinaryOperator> {
+        match input.as_str() {
+            "/" => Ok(BinaryOperator::Divide),
+            "*" => Ok(BinaryOperator::Times),
+            unsupported_op@_ => {
+                let msg = format!("The \"{}\" operator is unsupported", unsupported_op);
+                Err(input.error(msg))
+            }
+        }
+    }
+    fn factor_helper(input: Node) -> Result<(BinaryOperator, Expr)> {
+        Ok(match_nodes!(input.into_children();
+            [factor_operator(op), unary(expr)] => (op, expr),
+        ))
     }
     fn unary(input: Node) -> Result<Expr> {
         let get_op_type = |op| match op {
@@ -216,6 +280,7 @@ impl OxidoParser {
     }
     fn integer_literal(input: Node) -> Result<Expr> {
         input.as_str()
+            .trim()
             .parse::<i64>()
             .map(|i| -> Expr {
                 let (line, col) = input.as_span().start_pos().line_col();
@@ -239,6 +304,6 @@ impl OxidoParser {
 
 pub fn parse(program: &str) -> Result<Expr> {
     // let program = format!("{{ {} }}", program);
-    let inputs = OxidoParser::parse(Rule::unary, &program)?;
-    OxidoParser::unary(inputs.single()?)
+    let inputs = OxidoParser::parse(Rule::factor, &program)?;
+    OxidoParser::factor(inputs.single()?)
 }

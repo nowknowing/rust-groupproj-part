@@ -39,7 +39,9 @@ comparison = { term ~ ((">" | ">=" | "<" | "<=") ~ term)* }
 
 term = { factor ~ (("-" | "+") ~ factor)* }
 
-factor = { unary ~ (("/" | "*") ~ unary)* }
+factor = { unary ~ factor_helper* }
+factor_operator = { "/" | "*" }
+factor_helper = { factor_operator ~ unary }
 
 unary = { unary_operator ~ unary | primary }
 unary_operator = { "!" | "-" | "&mut " | "&" | "*" }
