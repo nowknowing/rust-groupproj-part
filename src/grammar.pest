@@ -35,7 +35,9 @@ conjunction = { equality ~ ("&&" ~ equality)* }
 
 equality = { comparison ~ (("!=" | "==") ~ comparison)* }
 
-comparison = { term ~ ((">" | ">=" | "<" | "<=") ~ term)* }
+comparison = { term ~ comparison_helper* }
+comparison_operator = { ">=" | ">" | "<=" | "<" }
+comparison_helper = { comparison_operator ~ term }
 
 term = { factor ~ term_helper* }
 term_operator = { "-" | "+" }

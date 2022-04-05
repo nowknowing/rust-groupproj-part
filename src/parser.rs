@@ -12,6 +12,7 @@ type Node<'i> = pest_consume::Node<'i, Rule, ()>;
 
 #[pest_consume::parser]
 impl OxidoParser {
+    // TODO: Shion.
     fn declaration(input: Node) -> Result<()> {
         println!("{:#?}", input);
         Ok(())
@@ -75,10 +76,12 @@ impl OxidoParser {
         println!("{:#?}", input);
         Ok(())
     }
+    // TODO: Shion.
     fn stmt(input: Node) -> Result<()> {
         println!("{:#?}", input);
         Ok(())
     }
+    // TODO: Shion.
     fn expr_stmt(input: Node) -> Result<()> {
         println!("{:#?}", input);
         Ok(())
@@ -113,9 +116,75 @@ impl OxidoParser {
         println!("{:#?}", input);
         Ok(())
     }
-    fn comparison(input: Node) -> Result<()> {
-        println!("{:#?}", input);
-        Ok(())
+    fn comparison(input: Node) -> Result<Expr> {
+        let create_binary_expr = |operator, first_operand, second_operand, src_location| 
+            Expr::PrimitiveOperationExpr(
+                Box::from(PrimitiveOperation::BinaryOperation {
+                    operator,
+                    first_operand,
+                    second_operand,
+                }),
+                src_location,
+            );
+
+        match_nodes!(input.children();
+            [term(initial_operand), comparison_helper(repetitions)..] => {
+                let mut repetitions = repetitions.rev().peekable();
+                match repetitions.next() {
+                    Some((op, expr)) => {
+                        let mut current_op = op;
+                        let mut second_operand = expr;
+
+                        if repetitions.peek().is_none() {
+                            let src_location = initial_operand.get_source_location();
+                            Ok(create_binary_expr(
+                                current_op,
+                                initial_operand,
+                                second_operand,
+                                src_location,
+                            ))
+                        } else {
+                            for (op, first_operand) in repetitions {
+                                let src_location = first_operand.get_source_location();
+                                second_operand = create_binary_expr(
+                                    current_op,
+                                    first_operand,
+                                    second_operand,
+                                    src_location,
+                                );
+                                current_op = op;
+                            }
+
+                            let src_location = initial_operand.get_source_location();
+                            Ok(create_binary_expr(
+                                current_op,
+                                initial_operand,
+                                second_operand,
+                                src_location,
+                            ))
+                        }
+                    },
+                    None => Ok(initial_operand),
+                }
+            },
+        )
+    }
+    fn comparison_operator(input: Node) -> Result<BinaryOperator> {
+        match input.as_str() {
+            ">" => Ok(BinaryOperator::Greater),
+            ">=" => Ok(BinaryOperator::GreaterOrEqual),
+            "<" => Ok(BinaryOperator::Less),
+            "<=" => Ok(BinaryOperator::LessOrEqual),
+            unsupported_op@_ => {
+                let msg = format!("The \"{}\" operator is unsupported", unsupported_op);
+                Err(input.error(msg))
+            }
+        }
+    }
+    fn comparison_helper(input: Node) -> Result<(BinaryOperator, Expr)> {
+        Ok(match_nodes!(input.into_children();
+            [comparison_operator(op), term(expr)] => (op, expr),
+        ))
     }
     fn term(input: Node) -> Result<Expr> {
         let create_binary_expr = |operator, first_operand, second_operand, src_location| 
@@ -298,6 +367,7 @@ impl OxidoParser {
         );
         Ok(ident_expr)
     }
+    // TODO: Shion.
     fn function_declaration(input: Node) -> Result<()> {
         println!("{:#?}", input);
         Ok(())
@@ -368,7 +438,7 @@ impl OxidoParser {
 
 pub fn parse(program: &str) -> Result<Expr> {
     // let program = format!("{{ {} }}", program);
-    let inputs = OxidoParser::parse(Rule::factor, &program)?;
-    OxidoParser::factor(inputs.single()?)
+    let inputs = OxidoParser::parse(Rule::comparison, &program)?;
+    OxidoParser::comparison(inputs.single()?)
 }
 
