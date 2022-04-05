@@ -11,6 +11,7 @@ use ast::{
     BinaryOperator, 
     SourceLocation,
     LifetimeParameter,
+    FuncParameter,
 };
 
 #[derive(Parser)]
@@ -578,9 +579,16 @@ impl OxidoParser {
         println!("{:#?}", input);
         Ok(())
     }
-    fn function_param(input: Node) -> Result<()> {
-        println!("{:#?}", input);
-        Ok(())
+    fn function_param(input: Node) -> Result<FuncParameter> {
+        match_nodes!(input.children();
+            [identifier(ident), datatype(param_type)] => {
+                if let Expr::IdentifierExpr(name, _) = ident {
+                    Ok((name, param_type))
+                } else {
+                    Err(input.error("Function parameter should start with an identifier"))
+                }
+            },
+        )
     }
     fn function_app(input: Node) -> Result<()> {
         println!("{:#?}", input);
@@ -627,9 +635,9 @@ impl OxidoParser {
     }
 }
 
-pub fn parse(program: &str) -> Result<Vec<LifetimeParameter>> {
+pub fn parse(program: &str) -> Result<FuncParameter> {
     // let program = format!("{{ {} }}", program);
-    let inputs = OxidoParser::parse(Rule::lifetime_param_list, &program)?;
-    OxidoParser::lifetime_param_list(inputs.single()?)
+    let inputs = OxidoParser::parse(Rule::function_param, &program)?;
+    OxidoParser::function_param(inputs.single()?)
 }
 
