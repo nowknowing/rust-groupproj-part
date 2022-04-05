@@ -17,6 +17,11 @@ impl OxidoParser {
         println!("{:#?}", input);
         Ok(())
     }
+    // TODO: Shion.
+    fn static_declaration(input: Node) -> Result<()> {
+        println!("{:#?}", input);
+        Ok(())
+    }
     fn mutable_specifier(input: Node) -> Result<bool> {
         Ok(true)
     }

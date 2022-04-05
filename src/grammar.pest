@@ -1,6 +1,9 @@
 declaration = {
-      ("let " ~ mutable_specifier? ~ identifier ~ (":" ~ datatype)? ~ ("=" ~ expr)?
-        | "static" ~ mutable_specifier? ~ identifier ~ ":" ~ datatype ~ "=" ~ expr) ~ ";"
+    "let " ~ mutable_specifier? ~ identifier ~ (":" ~ datatype)? ~ ("=" ~ expr)? ~ ";"
+}
+
+static_declaration = {
+    "static" ~ mutable_specifier? ~ identifier ~ ":" ~ datatype ~ "=" ~ expr ~ ";"
 }
 
 mutable_specifier = { "mut " }
@@ -19,7 +22,7 @@ block = { "{" ~ sequence ~ expr? ~ "}" }
 
 sequence = { (stmt | block)* }
 
-stmt = { declaration | function_declaration | expr_stmt }
+stmt = { declaration | static_declaration | function_declaration | expr_stmt }
 
 expr_stmt = { expr ~ ";" }
 
