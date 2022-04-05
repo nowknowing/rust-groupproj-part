@@ -33,7 +33,9 @@ disjunction = { conjunction ~ ("||" ~ conjunction)* }
 
 conjunction = { equality ~ ("&&" ~ equality)* }
 
-equality = { comparison ~ (("!=" | "==") ~ comparison)* }
+equality = { comparison ~ equality_helper* }
+equality_operator = { "!=" | "==" }
+equality_helper = { equality_operator ~ comparison }
 
 comparison = { term ~ comparison_helper* }
 comparison_operator = { ">=" | ">" | "<=" | "<" }

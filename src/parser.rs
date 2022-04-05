@@ -112,9 +112,73 @@ impl OxidoParser {
         println!("{:#?}", input);
         Ok(())
     }
-    fn equality(input: Node) -> Result<()> {
-        println!("{:#?}", input);
-        Ok(())
+    fn equality(input: Node) -> Result<Expr> {
+        let create_binary_expr = |operator, first_operand, second_operand, src_location| 
+            Expr::PrimitiveOperationExpr(
+                Box::from(PrimitiveOperation::BinaryOperation {
+                    operator,
+                    first_operand,
+                    second_operand,
+                }),
+                src_location,
+            );
+
+        match_nodes!(input.children();
+            [comparison(initial_operand), equality_helper(repetitions)..] => {
+                let mut repetitions = repetitions.rev().peekable();
+                match repetitions.next() {
+                    Some((op, expr)) => {
+                        let mut current_op = op;
+                        let mut second_operand = expr;
+
+                        if repetitions.peek().is_none() {
+                            let src_location = initial_operand.get_source_location();
+                            Ok(create_binary_expr(
+                                current_op,
+                                initial_operand,
+                                second_operand,
+                                src_location,
+                            ))
+                        } else {
+                            for (op, first_operand) in repetitions {
+                                let src_location = first_operand.get_source_location();
+                                second_operand = create_binary_expr(
+                                    current_op,
+                                    first_operand,
+                                    second_operand,
+                                    src_location,
+                                );
+                                current_op = op;
+                            }
+
+                            let src_location = initial_operand.get_source_location();
+                            Ok(create_binary_expr(
+                                current_op,
+                                initial_operand,
+                                second_operand,
+                                src_location,
+                            ))
+                        }
+                    },
+                    None => Ok(initial_operand),
+                }
+            },
+        )
+    }
+    fn equality_operator(input: Node) -> Result<BinaryOperator> {
+        match input.as_str() {
+            "!=" => Ok(BinaryOperator::NotEqual),
+            "==" => Ok(BinaryOperator::Equal),
+            unsupported_op@_ => {
+                let msg = format!("The \"{}\" operator is unsupported", unsupported_op);
+                Err(input.error(msg))
+            }
+        }
+    }
+    fn equality_helper(input: Node) -> Result<(BinaryOperator, Expr)> {
+        Ok(match_nodes!(input.into_children();
+            [equality_operator(op), comparison(expr)] => (op, expr),
+        ))
     }
     fn comparison(input: Node) -> Result<Expr> {
         let create_binary_expr = |operator, first_operand, second_operand, src_location| 
@@ -438,7 +502,7 @@ impl OxidoParser {
 
 pub fn parse(program: &str) -> Result<Expr> {
     // let program = format!("{{ {} }}", program);
-    let inputs = OxidoParser::parse(Rule::comparison, &program)?;
-    OxidoParser::comparison(inputs.single()?)
+    let inputs = OxidoParser::parse(Rule::equality, &program)?;
+    OxidoParser::equality(inputs.single()?)
 }
 
