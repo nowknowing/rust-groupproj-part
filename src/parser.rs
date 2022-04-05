@@ -523,7 +523,7 @@ impl OxidoParser {
         Ok(match_nodes!(input.into_children();
             [unary_operator(op), unary(expr)] 
                 => create_unary_expr(op, expr, line, col),
-            [primary(expr)] => expr,
+            [function_app(expr)] => expr,
         ))
     }
     fn unary_operator(input: Node) -> Result<UnaryOperator> {
@@ -591,9 +591,16 @@ impl OxidoParser {
             },
         )
     }
-    fn function_app(input: Node) -> Result<()> {
-        println!("{:#?}", input);
-        Ok(())
+    fn function_app(input: Node) -> Result<Expr> {
+        let (line, col) = input.as_span().start_pos().line_col();
+        Ok(match_nodes!(input.into_children();
+            [primary(expr)] => expr,
+            [primary(callee), function_arg_list(arguments)] => Expr::ApplicationExpr {
+                callee: Box::from(callee),
+                arguments,
+                position: SourceLocation { line, col },
+            },
+        ))
     }
     fn function_arg_list(input: Node) -> Result<Vec<Expr>> {
         input.into_children()
@@ -637,9 +644,9 @@ impl OxidoParser {
     }
 }
 
-pub fn parse(program: &str) -> Result<Vec<Expr>> {
+pub fn parse(program: &str) -> Result<Expr> {
     // let program = format!("{{ {} }}", program);
-    let inputs = OxidoParser::parse(Rule::function_arg_list, &program)?;
-    OxidoParser::function_arg_list(inputs.single()?)
+    let inputs = OxidoParser::parse(Rule::function_app, &program)?;
+    OxidoParser::function_app(inputs.single()?)
 }
 

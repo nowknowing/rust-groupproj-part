@@ -61,7 +61,7 @@ pub enum Expr {
         position: SourceLocation,
     },
     ApplicationExpr {
-        name: Identifier,
+        callee: Box<Expr>,
         arguments: Vec<Expr>,
         position: SourceLocation,
     },

@@ -28,7 +28,7 @@ expr_stmt = { expr ~ ";" }
 
 expr = { assignment }
 
-primary = { integer_literal | string_literal | boolean_literal | "(" ~ expr ~ ")" | block | function_app | return_val | identifier }
+primary = { integer_literal | string_literal | boolean_literal | "(" ~ expr ~ ")" | block | return_val | identifier }
 
 assignment = { identifier ~ "=" ~ assignment | disjunction }
 
@@ -52,8 +52,11 @@ factor = { unary ~ factor_helper* }
 factor_operator = { "/" | "*" }
 factor_helper = { factor_operator ~ unary }
 
-unary = { unary_operator ~ unary | primary }
+unary = { unary_operator ~ unary | function_app }
 unary_operator = { "!" | "-" | "&mut " | "&" | "*" }
+
+function_app = { primary ~ ("(" ~ function_arg_list ~ ")")* }
+function_arg_list = { expr ~ ("," ~ expr)* | "" }
 
 return_val = { "return " ~ expr }
 
@@ -74,9 +77,6 @@ lifetime_type_variable = @{ "'" ~ !ASCII_DIGIT ~ ("_" ~ (ASCII_ALPHANUMERIC | "_
 
 function_param_list = { function_param ~ ("," ~ function_param)* | "" }
 function_param = { identifier ~ ":" ~ datatype }
-
-function_app = { identifier ~ "(" ~ function_arg_list ~ ")" }
-function_arg_list = { expr ~ ("," ~ expr)* | "" }
 
 keyword = _{
     boolean_literal
