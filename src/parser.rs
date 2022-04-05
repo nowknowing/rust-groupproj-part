@@ -104,13 +104,107 @@ impl OxidoParser {
         println!("{:#?}", input);
         Ok(())
     }
-    fn disjunction(input: Node) -> Result<()> {
-        println!("{:#?}", input);
-        Ok(())
+    fn disjunction(input: Node) -> Result<Expr> {
+        let create_binary_expr = |operator, first_operand, second_operand, src_location| 
+            Expr::PrimitiveOperationExpr(
+                Box::from(PrimitiveOperation::BinaryOperation {
+                    operator,
+                    first_operand,
+                    second_operand,
+                }),
+                src_location,
+            );
+
+        match_nodes!(input.children();
+            [conjunction(initial_operand), conjunction(repetitions)..] => {
+                let mut repetitions = repetitions.rev().peekable();
+                match repetitions.next() {
+                    Some(expr) => {
+                        let mut second_operand = expr;
+
+                        if repetitions.peek().is_none() {
+                            let src_location = initial_operand.get_source_location();
+                            Ok(create_binary_expr(
+                                BinaryOperator::Or,
+                                initial_operand,
+                                second_operand,
+                                src_location,
+                            ))
+                        } else {
+                            for first_operand in repetitions {
+                                let src_location = first_operand.get_source_location();
+                                second_operand = create_binary_expr(
+                                    BinaryOperator::Or,
+                                    first_operand,
+                                    second_operand,
+                                    src_location,
+                                );
+                            }
+
+                            let src_location = initial_operand.get_source_location();
+                            Ok(create_binary_expr(
+                                BinaryOperator::Or,
+                                initial_operand,
+                                second_operand,
+                                src_location,
+                            ))
+                        }
+                    },
+                    None => Ok(initial_operand),
+                }
+            },
+        )
     }
-    fn conjunction(input: Node) -> Result<()> {
-        println!("{:#?}", input);
-        Ok(())
+    fn conjunction(input: Node) -> Result<Expr> {
+        let create_binary_expr = |operator, first_operand, second_operand, src_location| 
+            Expr::PrimitiveOperationExpr(
+                Box::from(PrimitiveOperation::BinaryOperation {
+                    operator,
+                    first_operand,
+                    second_operand,
+                }),
+                src_location,
+            );
+
+        match_nodes!(input.children();
+            [equality(initial_operand), equality(repetitions)..] => {
+                let mut repetitions = repetitions.rev().peekable();
+                match repetitions.next() {
+                    Some(expr) => {
+                        let mut second_operand = expr;
+
+                        if repetitions.peek().is_none() {
+                            let src_location = initial_operand.get_source_location();
+                            Ok(create_binary_expr(
+                                BinaryOperator::And,
+                                initial_operand,
+                                second_operand,
+                                src_location,
+                            ))
+                        } else {
+                            for first_operand in repetitions {
+                                let src_location = first_operand.get_source_location();
+                                second_operand = create_binary_expr(
+                                    BinaryOperator::And,
+                                    first_operand,
+                                    second_operand,
+                                    src_location,
+                                );
+                            }
+
+                            let src_location = initial_operand.get_source_location();
+                            Ok(create_binary_expr(
+                                BinaryOperator::And,
+                                initial_operand,
+                                second_operand,
+                                src_location,
+                            ))
+                        }
+                    },
+                    None => Ok(initial_operand),
+                }
+            },
+        )
     }
     fn equality(input: Node) -> Result<Expr> {
         let create_binary_expr = |operator, first_operand, second_operand, src_location| 
@@ -502,7 +596,7 @@ impl OxidoParser {
 
 pub fn parse(program: &str) -> Result<Expr> {
     // let program = format!("{{ {} }}", program);
-    let inputs = OxidoParser::parse(Rule::equality, &program)?;
-    OxidoParser::equality(inputs.single()?)
+    let inputs = OxidoParser::parse(Rule::disjunction, &program)?;
+    OxidoParser::disjunction(inputs.single()?)
 }
 
