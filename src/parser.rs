@@ -1,7 +1,16 @@
 mod ast;
 
 use pest_consume::{match_nodes, Error, Parser};
-use ast::{AST, Expr, Literal, DataType, PrimitiveOperation, UnaryOperator, BinaryOperator, SourceLocation};
+use ast::{
+    AST,
+    Expr,
+    Literal,
+    DataType,
+    PrimitiveOperation,
+    UnaryOperator,
+    BinaryOperator, 
+    SourceLocation,
+};
 
 #[derive(Parser)]
 #[grammar = "grammar.pest"]
@@ -528,9 +537,14 @@ impl OxidoParser {
             }
         }
     }
-    fn return_val(input: Node) -> Result<()> {
-        println!("{:#?}", input);
-        Ok(())
+    fn return_val(input: Node) -> Result<Expr> {
+        let (line, col) = input.as_span().start_pos().line_col();
+        Ok(match_nodes!(input.into_children();
+            [expr(expr)] => Expr::ReturnExpr(
+                Box::from(expr),
+                SourceLocation { line, col },
+            ),
+        ))
     }
     fn identifier(input: Node) -> Result<Expr> {
         let (line, col) = input.as_span().start_pos().line_col();
@@ -613,7 +627,7 @@ impl OxidoParser {
 
 pub fn parse(program: &str) -> Result<Expr> {
     // let program = format!("{{ {} }}", program);
-    let inputs = OxidoParser::parse(Rule::expr, &program)?;
-    OxidoParser::expr(inputs.single()?)
+    let inputs = OxidoParser::parse(Rule::return_val, &program)?;
+    OxidoParser::return_val(inputs.single()?)
 }
 
