@@ -150,10 +150,10 @@ impl OxidoParser {
         println!("{:#?}", input);
         Ok(())
     }
-    // TODO: Shion.
-    fn expr_stmt(input: Node) -> Result<()> {
-        println!("{:#?}", input);
-        Ok(())
+    fn expr_stmt(input: Node) -> Result<Stmt> {
+        Ok(match_nodes!(input.children();
+            [expr(expr)] => Stmt::ExprStmt(expr),
+        ))
     }
     fn expr(input: Node) -> Result<Expr> {
         Ok(match_nodes!(input.into_children();
@@ -702,7 +702,7 @@ impl OxidoParser {
 
 pub fn parse(program: &str) -> Result<Stmt> {
     // let program = format!("{{ {} }}", program);
-    let inputs = OxidoParser::parse(Rule::declaration, &program)?;
-    OxidoParser::declaration(inputs.single()?)
+    let inputs = OxidoParser::parse(Rule::expr_stmt, &program)?;
+    OxidoParser::expr_stmt(inputs.single()?)
 }
 
