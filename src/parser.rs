@@ -575,9 +575,10 @@ impl OxidoParser {
     fn lifetime_type_variable(input: Node) -> Result<LifetimeParameter> {
         Ok(String::from(input.as_str()))
     }
-    fn function_param_list(input: Node) -> Result<()> {
-        println!("{:#?}", input);
-        Ok(())
+    fn function_param_list(input: Node) -> Result<Vec<FuncParameter>> {
+        input.into_children()
+            .map(OxidoParser::function_param)
+            .collect()
     }
     fn function_param(input: Node) -> Result<FuncParameter> {
         match_nodes!(input.children();
@@ -635,9 +636,9 @@ impl OxidoParser {
     }
 }
 
-pub fn parse(program: &str) -> Result<FuncParameter> {
+pub fn parse(program: &str) -> Result<Vec<FuncParameter>> {
     // let program = format!("{{ {} }}", program);
-    let inputs = OxidoParser::parse(Rule::function_param, &program)?;
-    OxidoParser::function_param(inputs.single()?)
+    let inputs = OxidoParser::parse(Rule::function_param_list, &program)?;
+    OxidoParser::function_param_list(inputs.single()?)
 }
 
