@@ -86,9 +86,10 @@ impl OxidoParser {
         println!("{:#?}", input);
         Ok(())
     }
-    fn expr(input: Node) -> Result<()> {
-        println!("{:#?}", input);
-        Ok(())
+    fn expr(input: Node) -> Result<Expr> {
+        Ok(match_nodes!(input.into_children();
+            [assignment(expr)] => expr,
+        ))
     }
     fn primary(input: Node) -> Result<Expr> {
         // println!("{:#?}", input);
@@ -100,9 +101,22 @@ impl OxidoParser {
             [identifier(expr)] => expr,
         ))
     }
-    fn assignment(input: Node) -> Result<()> {
-        println!("{:#?}", input);
-        Ok(())
+    fn assignment(input: Node) -> Result<Expr> {
+        let (line, col) = input.as_span().start_pos().line_col();
+        match_nodes!(input.children();
+            [identifier(ident), assignment(value)] => {
+                if let Expr::IdentifierExpr(name, _) = ident {
+                    Ok(Expr::AssignmentExpr {
+                        name,
+                        value: Box::from(value),
+                        position: SourceLocation { line, col },
+                    })
+                } else {
+                    Err(input.error("Left-hand side of an assignment must be an identifier"))
+                }
+            },
+            [disjunction(d)] => Ok(d),
+        )
     }
     fn disjunction(input: Node) -> Result<Expr> {
         let create_binary_expr = |operator, first_operand, second_operand, src_location| 
@@ -596,7 +610,7 @@ impl OxidoParser {
 
 pub fn parse(program: &str) -> Result<Expr> {
     // let program = format!("{{ {} }}", program);
-    let inputs = OxidoParser::parse(Rule::disjunction, &program)?;
-    OxidoParser::disjunction(inputs.single()?)
+    let inputs = OxidoParser::parse(Rule::expr, &program)?;
+    OxidoParser::expr(inputs.single()?)
 }
 
