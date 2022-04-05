@@ -27,6 +27,20 @@ type Node<'i> = pest_consume::Node<'i, Rule, ()>;
 
 #[pest_consume::parser]
 impl OxidoParser {
+    fn EOI(input: Node) -> Result<()> {
+        Ok(())
+    }
+    fn program(input: Node) -> Result<Vec<Stmt>> {
+        Ok(match_nodes!(input.into_children();
+            [top_level_declarations(stmts).., _] => stmts.collect()
+        ))
+    }
+    fn top_level_declarations(input: Node) -> Result<Stmt> {
+        Ok(match_nodes!(input.into_children();
+            [static_declaration(stmt)] => stmt,
+            [function_declaration(stmt)] => stmt,
+        ))
+    }
     fn declaration(input: Node) -> Result<Stmt> {
         let (line, col) = input.as_span().start_pos().line_col();
 
@@ -793,9 +807,8 @@ impl OxidoParser {
     }
 }
 
-pub fn parse(program: &str) -> Result<Stmt> {
-    // let program = format!("{{ {} }}", program);
-    let inputs = OxidoParser::parse(Rule::function_declaration, &program)?;
-    OxidoParser::function_declaration(inputs.single()?)
+pub fn parse(program: &str) -> Result<Vec<Stmt>> {
+    let inputs = OxidoParser::parse(Rule::program, &program)?;
+    OxidoParser::program(inputs.single()?)
 }
 

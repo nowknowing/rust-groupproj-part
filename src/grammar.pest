@@ -1,3 +1,10 @@
+program = {
+    SOI ~ top_level_declarations* ~ EOI
+}
+top_level_declarations = { 
+    static_declaration | function_declaration 
+}
+
 declaration = {
     "let " ~ mutable_specifier? ~ identifier ~ (":" ~ datatype)? ~ ("=" ~ expr)? ~ ";"
 }
