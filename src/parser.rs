@@ -24,10 +24,42 @@ type Node<'i> = pest_consume::Node<'i, Rule, ()>;
 
 #[pest_consume::parser]
 impl OxidoParser {
-    // TODO: Shion.
-    fn declaration(input: Node) -> Result<()> {
-        println!("{:#?}", input);
-        Ok(())
+    fn declaration(input: Node) -> Result<Stmt> {
+        let (line, col) = input.as_span().start_pos().line_col();
+
+        let create_decl_stmt = |is_mutable, identifier, annotation, value, input: Node| {
+            if let Expr::IdentifierExpr(name, _) = identifier {
+                Ok(Stmt::LetStmt {
+                    name,
+                    is_mutable,
+                    annotation,
+                    value,
+                    position: SourceLocation { line, col }, 
+                })
+            } else {
+                Err(input.error("An identifier is required for a static declaration"))
+            }
+        };
+
+        // Could probably be much better expressed by iterating through the input's children.
+        match_nodes!(input.children();
+            [identifier(ident)] => 
+                create_decl_stmt(false, ident, None, None, input),
+            [identifier(ident), datatype(annotation)] => 
+                create_decl_stmt(false, ident, Some(annotation), None, input),
+            [identifier(ident), expr(value)] => 
+                create_decl_stmt(false, ident, None, Some(value), input),
+            [identifier(ident), datatype(annotation), expr(value)] => 
+                create_decl_stmt(false, ident, Some(annotation), Some(value), input),
+            [mutable_specifier(_m), identifier(ident)] => 
+                create_decl_stmt(true, ident, None, None, input),
+            [mutable_specifier(_m), identifier(ident), datatype(annotation)] => 
+                create_decl_stmt(true, ident, Some(annotation), None, input),
+            [mutable_specifier(_m), identifier(ident), expr(value)] => 
+                create_decl_stmt(true, ident, None, Some(value), input),
+            [mutable_specifier(_m), identifier(ident), datatype(annotation), expr(value)] => 
+                create_decl_stmt(true, ident, Some(annotation), Some(value), input),
+        )
     }
     fn static_declaration(input: Node) -> Result<Stmt> {
         let create_static_decl_stmt = |input: Node, identifier, annotation, value, is_mutable, position| {
@@ -670,7 +702,7 @@ impl OxidoParser {
 
 pub fn parse(program: &str) -> Result<Stmt> {
     // let program = format!("{{ {} }}", program);
-    let inputs = OxidoParser::parse(Rule::static_declaration, &program)?;
-    OxidoParser::static_declaration(inputs.single()?)
+    let inputs = OxidoParser::parse(Rule::declaration, &program)?;
+    OxidoParser::declaration(inputs.single()?)
 }
 

@@ -141,7 +141,7 @@ pub enum Stmt {
         name: Identifier,
         is_mutable: bool,
         annotation: Option<DataType>,
-        value: Expr,
+        value: Option<Expr>,
         position: SourceLocation,
     },
     StaticStmt {
