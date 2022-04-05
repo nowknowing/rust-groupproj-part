@@ -12,6 +12,7 @@ use ast::{
     SourceLocation,
     LifetimeParameter,
     FuncParameter,
+    Stmt,
 };
 
 #[derive(Parser)]
@@ -28,10 +29,30 @@ impl OxidoParser {
         println!("{:#?}", input);
         Ok(())
     }
-    // TODO: Shion.
-    fn static_declaration(input: Node) -> Result<()> {
-        println!("{:#?}", input);
-        Ok(())
+    fn static_declaration(input: Node) -> Result<Stmt> {
+        let create_static_decl_stmt = |input: Node, identifier, annotation, value, is_mutable, position| {
+            if let Expr::IdentifierExpr(name, _) = identifier {
+                Ok(Stmt::StaticStmt {
+                    name,
+                    is_mutable,
+                    annotation,
+                    value,
+                    position, 
+                })
+            } else {
+                Err(input.error("An identifier is required for a static declaration"))
+            }
+        };
+
+        let (line, col) = input.as_span().start_pos().line_col();
+        let position = SourceLocation { line, col };
+
+        match_nodes!(input.children();
+            [identifier(ident), datatype(annotation), expr(value)] =>
+                create_static_decl_stmt(input, ident, annotation, value, false, position),
+            [mutable_specifier(_m), identifier(ident), datatype(annotation), expr(value)] =>
+                create_static_decl_stmt(input, ident, annotation, value, true, position),
+        )
     }
     fn mutable_specifier(input: Node) -> Result<bool> {
         Ok(true)
@@ -113,6 +134,9 @@ impl OxidoParser {
             [integer_literal(expr)] => expr,
             [string_literal(expr)] => expr,
             [boolean_literal(expr)] => expr,
+
+
+            [return_val(expr)] => expr,
             [identifier(expr)] => expr,
         ))
     }
@@ -644,9 +668,9 @@ impl OxidoParser {
     }
 }
 
-pub fn parse(program: &str) -> Result<Expr> {
+pub fn parse(program: &str) -> Result<Stmt> {
     // let program = format!("{{ {} }}", program);
-    let inputs = OxidoParser::parse(Rule::function_app, &program)?;
-    OxidoParser::function_app(inputs.single()?)
+    let inputs = OxidoParser::parse(Rule::static_declaration, &program)?;
+    OxidoParser::static_declaration(inputs.single()?)
 }
 
