@@ -595,9 +595,10 @@ impl OxidoParser {
         println!("{:#?}", input);
         Ok(())
     }
-    fn function_arg_list(input: Node) -> Result<()> {
-        println!("{:#?}", input);
-        Ok(())
+    fn function_arg_list(input: Node) -> Result<Vec<Expr>> {
+        input.into_children()
+            .map(OxidoParser::expr)
+            .collect()
     }
     fn boolean_literal(input: Node) -> Result<Expr> {
         input.as_str()
@@ -636,9 +637,9 @@ impl OxidoParser {
     }
 }
 
-pub fn parse(program: &str) -> Result<Vec<FuncParameter>> {
+pub fn parse(program: &str) -> Result<Vec<Expr>> {
     // let program = format!("{{ {} }}", program);
-    let inputs = OxidoParser::parse(Rule::function_param_list, &program)?;
-    OxidoParser::function_param_list(inputs.single()?)
+    let inputs = OxidoParser::parse(Rule::function_arg_list, &program)?;
+    OxidoParser::function_arg_list(inputs.single()?)
 }
 
