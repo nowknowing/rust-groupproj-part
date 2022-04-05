@@ -499,36 +499,34 @@ impl OxidoParser {
         ))
     }
     fn unary(input: Node) -> Result<Expr> {
-        let get_op_type = |op| match op {
-            "!" => Ok(UnaryOperator::Not),
-            "-" => Ok(UnaryOperator::UnaryMinus),
-            "&mut " => Ok(UnaryOperator::MutableBorrow),
-            "&" => Ok(UnaryOperator::ImmutableBorrow),
-            "*" => Ok(UnaryOperator::Dereference),
-            unsupported_op@_ =>
-                Err(format!("The \"{}\" operator is unsupported", unsupported_op)),
-        };
-
-        let create_op_expr = |op_type, expr, line, col| Expr::PrimitiveOperationExpr(
+        let create_unary_expr = |operator, operand, line, col| Expr::PrimitiveOperationExpr(
             Box::from(PrimitiveOperation::UnaryOperation {
-                operator: op_type,
-                operand: expr,
+                operator,
+                operand,
             }),
             SourceLocation { line, col },
         );
 
         let (line, col) = input.as_span().start_pos().line_col();
 
-        match_nodes!(input.children();
-            [unary_operator(op), unary(expr)] => match get_op_type(&op) {
-                Ok(op_type) => Ok(create_op_expr(op_type, expr, line, col)),
-                Err(msg) => Err(input.error(msg)),
-            },
-            [primary(expr)] => Ok(expr),
-        )
+        Ok(match_nodes!(input.into_children();
+            [unary_operator(op), unary(expr)] 
+                => create_unary_expr(op, expr, line, col),
+            [primary(expr)] => expr,
+        ))
     }
-    fn unary_operator(input: Node) -> Result<String> {
-        Ok(String::from(input.as_str()))
+    fn unary_operator(input: Node) -> Result<UnaryOperator> {
+        match input.as_str() {
+            "!" => Ok(UnaryOperator::Not),
+            "-" => Ok(UnaryOperator::UnaryMinus),
+            "&mut " => Ok(UnaryOperator::MutableBorrow),
+            "&" => Ok(UnaryOperator::ImmutableBorrow),
+            "*" => Ok(UnaryOperator::Dereference),
+            unsupported_op@_ => {
+                let msg = format!("The \"{}\" operator is unsupported", unsupported_op);
+                Err(input.error(msg))
+            }
+        }
     }
     fn return_val(input: Node) -> Result<()> {
         println!("{:#?}", input);
