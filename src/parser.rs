@@ -92,7 +92,6 @@ impl OxidoParser {
         ))
     }
     fn primary(input: Node) -> Result<Expr> {
-        // println!("{:#?}", input);
         // TODO: match all cases.
         Ok(match_nodes!(input.into_children();
             [integer_literal(expr)] => expr,
