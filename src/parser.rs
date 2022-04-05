@@ -576,6 +576,7 @@ impl OxidoParser {
     }
     fn boolean_literal(input: Node) -> Result<Expr> {
         input.as_str()
+            .trim()
             .parse::<bool>()
             .map(|b| -> Expr {
                 let (line, col) = input.as_span().start_pos().line_col();
