@@ -10,6 +10,7 @@ use ast::{
     UnaryOperator,
     BinaryOperator, 
     SourceLocation,
+    LifetimeParameter,
 };
 
 #[derive(Parser)]
@@ -565,11 +566,12 @@ impl OxidoParser {
             [datatype(d)] => d,
         ))
     }
-    fn lifetime_param_list(input: Node) -> Result<()> {
-        println!("{:#?}", input);
-        Ok(())
+    fn lifetime_param_list(input: Node) -> Result<Vec<LifetimeParameter>> {
+        input.into_children()
+            .map(OxidoParser::lifetime_type_variable)
+            .collect()
     }
-    fn lifetime_type_variable(input: Node) -> Result<String> {
+    fn lifetime_type_variable(input: Node) -> Result<LifetimeParameter> {
         Ok(String::from(input.as_str()))
     }
     fn function_param_list(input: Node) -> Result<()> {
@@ -625,9 +627,9 @@ impl OxidoParser {
     }
 }
 
-pub fn parse(program: &str) -> Result<Expr> {
+pub fn parse(program: &str) -> Result<Vec<LifetimeParameter>> {
     // let program = format!("{{ {} }}", program);
-    let inputs = OxidoParser::parse(Rule::return_val, &program)?;
-    OxidoParser::return_val(inputs.single()?)
+    let inputs = OxidoParser::parse(Rule::lifetime_param_list, &program)?;
+    OxidoParser::lifetime_param_list(inputs.single()?)
 }
 
