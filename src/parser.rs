@@ -13,6 +13,9 @@ use ast::{
     LifetimeParameter,
     FuncParameter,
     Stmt,
+    Block,
+    Sequence,
+    SequenceStmt,
 };
 
 #[derive(Parser)]
@@ -137,18 +140,68 @@ impl OxidoParser {
             [datatype(d)..] => d.collect(),
         ))
     }
-    fn block(input: Node) -> Result<()> {
-        println!("{:#?}", input);
-        Ok(())
+    fn block(input: Node) -> Result<Expr> {
+        let process_stmts = |mut stmts: Sequence, last_expr| match last_expr {
+            Some(expr) => match expr {
+                return_expr@Expr::ReturnExpr(_, _) => {
+                    stmts.push(SequenceStmt::Stmt(
+                        Stmt::ExprStmt(return_expr),
+                    ));
+                    stmts
+                },
+                expr_to_return@_ => {
+                    let return_expr_position = expr_to_return.get_source_location();
+                    let return_expr = Expr::ReturnExpr(
+                        Box::from(expr_to_return),
+                        return_expr_position,
+                    );
+                    stmts.push(SequenceStmt::Stmt(
+                        Stmt::ExprStmt(return_expr),
+                    ));
+                    stmts
+                }
+            },
+            None => stmts,
+        };
+
+        let (line, col) = input.as_span().start_pos().line_col();
+        Ok(match_nodes!(input.into_children();
+            [sequence(stmts), expr(mut last_expr)..] => Expr::BlockExpr(
+                Box::from(Block {
+                    statements: process_stmts(stmts, last_expr.next()),
+                }),
+                SourceLocation { line, col },
+            )
+        ))
     }
-    fn sequence(input: Node) -> Result<()> {
-        println!("{:#?}", input);
-        Ok(())
+    fn sequence(input: Node) -> Result<Sequence> {
+        input.children()
+            .map(|node| match node.as_rule() {
+                Rule::stmt => match OxidoParser::stmt(node) {
+                    Ok(stmt) => Ok(SequenceStmt::Stmt(stmt)),
+                    Err(msg) => Err(msg),
+                },
+                Rule::block => match OxidoParser::block(node) {
+                    Ok(expr) => {
+                        if let Expr::BlockExpr(block, _) = expr {
+                            Ok(SequenceStmt::Block(*block))
+                        } else {
+                            Err(input.error("Sequence expects a block or a statement"))
+                        }
+                    },
+                    Err(msg) => Err(msg),
+                },
+                _ => Err(input.error("Sequence expects a block or a statement"))
+            })
+            .collect()
     }
-    // TODO: Shion.
-    fn stmt(input: Node) -> Result<()> {
-        println!("{:#?}", input);
-        Ok(())
+    fn stmt(input: Node) -> Result<Stmt> {
+        Ok(match_nodes!(input.into_children();
+            [declaration(stmt)] => stmt,
+            [static_declaration(stmt)] => stmt,
+            [function_declaration(stmt)] => stmt,
+            [expr_stmt(stmt)] => stmt,
+        ))
     }
     fn expr_stmt(input: Node) -> Result<Stmt> {
         Ok(match_nodes!(input.children();
@@ -161,13 +214,12 @@ impl OxidoParser {
         ))
     }
     fn primary(input: Node) -> Result<Expr> {
-        // TODO: match all cases.
         Ok(match_nodes!(input.into_children();
             [integer_literal(expr)] => expr,
             [string_literal(expr)] => expr,
             [boolean_literal(expr)] => expr,
-
-
+            // [grouped(expr)] => expr,
+            [block(expr)] => expr,
             [return_val(expr)] => expr,
             [identifier(expr)] => expr,
         ))
@@ -613,10 +665,51 @@ impl OxidoParser {
         );
         Ok(ident_expr)
     }
-    // TODO: Shion.
-    fn function_declaration(input: Node) -> Result<()> {
-        println!("{:#?}", input);
-        Ok(())
+    fn function_declaration(input: Node) -> Result<Stmt> {
+        let extract_name_from_identifier = |identifier| match identifier {
+            Expr::IdentifierExpr(name, _) => Ok(name),
+            _ => Err("Identifier is expected in a function declaration")
+        };
+
+        let process_block_expr = |block_expr| match block_expr {
+            Expr::BlockExpr(block, _) => Ok(*block),
+            _ => Err("Body (block expression) is expected in a function declaration")
+        };
+
+        let (line, col) = input.as_span().start_pos().line_col();
+        let position = SourceLocation { line, col };
+
+        let create_func_decl =
+            |input: Node, identifier, lifetime_parameters, parameters, return_type: Option<DataType>, block_expr| {
+                let name = extract_name_from_identifier(identifier).map_err(|e| input.error(e))?;
+                let block = process_block_expr(block_expr).map_err(|e| input.error(e))?;
+                Ok(Stmt::FuncDeclaration {
+                    name,
+                    lifetime_parameters,
+                    parameters,
+                    return_type: return_type.unwrap_or(DataType::Unit),
+                    body: block,
+                    position,
+                })
+            };
+
+        match_nodes!(input.children();
+            [
+                identifier(ident),
+                function_param_list(parameters), 
+                function_return_type(mut return_type)..,
+                block(block_expr),
+            ] => 
+                create_func_decl(input, ident, vec![], parameters, return_type.next(), block_expr),
+            [
+                identifier(ident), 
+                lifetime_param_list(lifetime_parameters), 
+                function_param_list(parameters), 
+                function_return_type(mut return_type)..,
+                block(block_expr),
+            ] => 
+                create_func_decl(input, ident, lifetime_parameters, parameters, return_type.next(), block_expr),
+        )
     }
     fn function_return_type(input: Node) -> Result<DataType> {
         Ok(match_nodes!(input.into_children();
@@ -702,7 +795,7 @@ impl OxidoParser {
 
 pub fn parse(program: &str) -> Result<Stmt> {
     // let program = format!("{{ {} }}", program);
-    let inputs = OxidoParser::parse(Rule::expr_stmt, &program)?;
-    OxidoParser::expr_stmt(inputs.single()?)
+    let inputs = OxidoParser::parse(Rule::function_declaration, &program)?;
+    OxidoParser::function_declaration(inputs.single()?)
 }
 

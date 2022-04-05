@@ -45,8 +45,7 @@ pub type Sequence = Vec<SequenceStmt>;
 
 #[derive(Debug)]
 pub struct Block {
-    statements: Sequence,
-    last_expression: Option<Expr>,
+    pub statements: Sequence,
 }
 
 #[derive(Debug)]
