@@ -37,7 +37,9 @@ equality = { comparison ~ (("!=" | "==") ~ comparison)* }
 
 comparison = { term ~ ((">" | ">=" | "<" | "<=") ~ term)* }
 
-term = { factor ~ (("-" | "+") ~ factor)* }
+term = { factor ~ term_helper* }
+term_operator = { "-" | "+" }
+term_helper = { term_operator ~ factor }
 
 factor = { unary ~ factor_helper* }
 factor_operator = { "/" | "*" }
