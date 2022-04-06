@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 use std::fmt::Debug;
 
 pub trait AST {
@@ -25,8 +24,6 @@ pub enum DataType {
     Func(Vec<LifetimeParameter>, Vec<DataType>, Box<DataType>),
 }
 
-pub type Identifier = String;
-
 #[derive(Debug, Clone)]
 pub enum Literal {
     IntLiteral(i64),
@@ -50,7 +47,7 @@ pub struct Block {
 
 #[derive(Debug, Clone)]
 pub enum Expr {
-    IdentifierExpr(Identifier, SourceLocation),
+    IdentifierExpr(String, SourceLocation),
     LiteralExpr(Literal, SourceLocation),
     BlockExpr(Box<Block>, SourceLocation),
     PrimitiveOperationExpr(Box<PrimitiveOperation>, SourceLocation),
@@ -132,26 +129,26 @@ pub enum VariadicOperator {
     Println,
 }
 
-pub type FuncParameter = (Identifier, DataType);
+pub type FuncParameter = (Expr, DataType);
 
 #[derive(Debug, Clone)]
 pub enum Stmt {
     LetStmt {
-        name: Identifier,
+        name: Expr,
         is_mutable: bool,
         annotation: Option<DataType>,
         value: Option<Expr>,
         position: SourceLocation,
     },
     StaticStmt {
-        name: Identifier,
+        name: Expr,
         is_mutable: bool,
         annotation: DataType,
         value: Expr,
         position: SourceLocation,
     },
     FuncDeclaration {
-        name: Identifier,
+        name: Expr,
         lifetime_parameters: Vec<LifetimeParameter>,
         parameters: Vec<FuncParameter>,
         return_type: DataType,

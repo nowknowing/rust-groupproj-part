@@ -43,65 +43,59 @@ impl OxidoParser {
     }
     fn declaration(input: Node) -> Result<Stmt> {
         let (line, col) = input.as_span().start_pos().line_col();
+        let position = SourceLocation { line, col };
 
-        let create_decl_stmt = |is_mutable, identifier, annotation, value, input: Node| {
-            if let Expr::IdentifierExpr(name, _) = identifier {
-                Ok(Stmt::LetStmt {
-                    name,
-                    is_mutable,
-                    annotation,
-                    value,
-                    position: SourceLocation { line, col }, 
-                })
-            } else {
-                Err(input.error("An identifier is required for a static declaration"))
-            }
-        };
+        // Could probably be more concisely expressed by iterating through the input's children instead.
+        let (name, is_mutable, annotation, value) = 
+            match_nodes!(input.children();
+                [identifier(name)] => 
+                    (name, false, None, None),
+                [identifier(name), datatype(annotation)] => 
+                    (name, false, Some(annotation), None),
+                [identifier(name), expr(value)] => 
+                    (name, false, None, Some(value)),
+                [identifier(name), datatype(annotation), expr(value)] => 
+                    (name, false, Some(annotation), Some(value)),
+                [mutable_specifier(_m), identifier(name)] => 
+                    (name, true, None, None),
+                [mutable_specifier(_m), identifier(name), datatype(annotation)] => 
+                    (name, true, Some(annotation), None),
+                [mutable_specifier(_m), identifier(name), expr(value)] => 
+                    (name, true, None, Some(value)),
+                [mutable_specifier(_m), identifier(name), datatype(annotation), expr(value)] => 
+                    (name, true, Some(annotation), Some(value)),
+            );
 
-        // Could probably be much better expressed by iterating through the input's children.
-        match_nodes!(input.children();
-            [identifier(ident)] => 
-                create_decl_stmt(false, ident, None, None, input),
-            [identifier(ident), datatype(annotation)] => 
-                create_decl_stmt(false, ident, Some(annotation), None, input),
-            [identifier(ident), expr(value)] => 
-                create_decl_stmt(false, ident, None, Some(value), input),
-            [identifier(ident), datatype(annotation), expr(value)] => 
-                create_decl_stmt(false, ident, Some(annotation), Some(value), input),
-            [mutable_specifier(_m), identifier(ident)] => 
-                create_decl_stmt(true, ident, None, None, input),
-            [mutable_specifier(_m), identifier(ident), datatype(annotation)] => 
-                create_decl_stmt(true, ident, Some(annotation), None, input),
-            [mutable_specifier(_m), identifier(ident), expr(value)] => 
-                create_decl_stmt(true, ident, None, Some(value), input),
-            [mutable_specifier(_m), identifier(ident), datatype(annotation), expr(value)] => 
-                create_decl_stmt(true, ident, Some(annotation), Some(value), input),
-        )
+        Ok(Stmt::LetStmt {
+            name,
+            is_mutable,
+            annotation,
+            value,
+            position, 
+        })
     }
     fn static_declaration(input: Node) -> Result<Stmt> {
-        let create_static_decl_stmt = |input: Node, identifier, annotation, value, is_mutable, position| {
-            if let Expr::IdentifierExpr(name, _) = identifier {
-                Ok(Stmt::StaticStmt {
-                    name,
-                    is_mutable,
-                    annotation,
-                    value,
-                    position, 
-                })
-            } else {
-                Err(input.error("An identifier is required for a static declaration"))
-            }
-        };
-
         let (line, col) = input.as_span().start_pos().line_col();
         let position = SourceLocation { line, col };
 
-        match_nodes!(input.children();
-            [identifier(ident), datatype(annotation), expr(value)] =>
-                create_static_decl_stmt(input, ident, annotation, value, false, position),
-            [mutable_specifier(_m), identifier(ident), datatype(annotation), expr(value)] =>
-                create_static_decl_stmt(input, ident, annotation, value, true, position),
-        )
+        Ok(match_nodes!(input.children();
+            [identifier(identifier), datatype(annotation), expr(value)] =>
+                Stmt::StaticStmt {
+                    name: identifier,
+                    is_mutable: false,
+                    annotation,
+                    value,
+                    position,
+                },
+            [mutable_specifier(_m), identifier(identifier), datatype(annotation), expr(value)] =>
+                Stmt::StaticStmt {
+                    name: identifier,
+                    is_mutable: true,
+                    annotation,
+                    value,
+                    position,
+                },
+        ))
     }
     fn mutable_specifier(input: Node) -> Result<bool> {
         Ok(true)
@@ -702,11 +696,6 @@ impl OxidoParser {
         Ok(ident_expr)
     }
     fn function_declaration(input: Node) -> Result<Stmt> {
-        let extract_name_from_identifier = |identifier| match identifier {
-            Expr::IdentifierExpr(name, _) => Ok(name),
-            _ => Err("Identifier is expected in a function declaration")
-        };
-
         let process_block_expr = |block_expr| match block_expr {
             Expr::BlockExpr(block, _) => Ok(*block),
             _ => Err("Body (block expression) is expected in a function declaration")
@@ -716,8 +705,7 @@ impl OxidoParser {
         let position = SourceLocation { line, col };
 
         let create_func_decl =
-            |input: Node, identifier, lifetime_parameters, parameters, return_type: Option<DataType>, block_expr| {
-                let name = extract_name_from_identifier(identifier).map_err(|e| input.error(e))?;
+            |input: Node, name, lifetime_parameters, parameters, return_type: Option<DataType>, block_expr| {
                 let block = process_block_expr(block_expr).map_err(|e| input.error(e))?;
                 Ok(Stmt::FuncDeclaration {
                     name,
@@ -731,20 +719,20 @@ impl OxidoParser {
 
         match_nodes!(input.children();
             [
-                identifier(ident),
+                identifier(name),
                 function_param_list(parameters), 
                 function_return_type(mut return_type)..,
                 block(block_expr),
             ] => 
-                create_func_decl(input, ident, vec![], parameters, return_type.next(), block_expr),
+                create_func_decl(input, name, vec![], parameters, return_type.next(), block_expr),
             [
-                identifier(ident), 
+                identifier(name), 
                 lifetime_param_list(lifetime_parameters), 
                 function_param_list(parameters), 
                 function_return_type(mut return_type)..,
                 block(block_expr),
             ] => 
-                create_func_decl(input, ident, lifetime_parameters, parameters, return_type.next(), block_expr),
+                create_func_decl(input, name, lifetime_parameters, parameters, return_type.next(), block_expr),
         )
     }
     fn function_return_type(input: Node) -> Result<DataType> {
@@ -766,15 +754,10 @@ impl OxidoParser {
             .collect()
     }
     fn function_param(input: Node) -> Result<FuncParameter> {
-        match_nodes!(input.children();
-            [identifier(ident), datatype(param_type)] => {
-                if let Expr::IdentifierExpr(name, _) = ident {
-                    Ok((name, param_type))
-                } else {
-                    Err(input.error("Function parameter should start with an identifier"))
-                }
-            },
-        )
+        Ok(match_nodes!(input.children();
+            [identifier(name), datatype(param_type)] => 
+                (name, param_type), 
+        ))
     }
     fn function_app(input: Node) -> Result<Expr> {
         let (line, col) = input.as_span().start_pos().line_col();
