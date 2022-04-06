@@ -9,11 +9,20 @@ fn main() {
     let take_one = one;
     println!("takeOne : {} copy not borrow from one: {}.", take_one, one);
 
-    let s2 = s1; // s2 borrows from s1
+    let s2 = s1; // move s1 to 2
+    println!("The borrowed string is '{}'.", s2);
+
+    takes_and_gives_back(s2);
     println!("The borrowed string is '{}'.", s2);
 
 }
 
 fn calculate_length(s: &String) -> bool {
     s.len() > 3
+}
+
+fn takes_and_gives_back(a_string: String) -> String { // a_string comes into
+    // scope
+
+a_string  // a_string is returned and moves out to the calling function
 }

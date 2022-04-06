@@ -8,7 +8,7 @@ fn main() {
     let r3 = &mut s; // no problem
     println!("r3: {}", r3);
     let r4 = &mut s;
-    println!("r4: {}", r4);
+    println!("r4: {} ", r4);
 
     //can borrow. no using of immutable once mutable is borrowed.
     let mut m  = String::from("world");
