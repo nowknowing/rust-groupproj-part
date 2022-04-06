@@ -101,7 +101,7 @@ impl OxidoParser {
         Ok(true)
     }
     fn datatype(input: Node) -> Result<DataType> {
-        Ok(match input.as_str() {
+        Ok(match input.as_str().trim() {
             "i32" => DataType::Int64,
             "bool" => DataType::Bool,
             "str" => DataType::Str,
@@ -226,6 +226,7 @@ impl OxidoParser {
             [integer_literal(expr)] => expr,
             [string_literal(expr)] => expr,
             [boolean_literal(expr)] => expr,
+            [unit_literal(expr)] => expr,
             [grouped_expr(expr)] => expr,
             [block(expr)] => expr,
             [return_val(expr)] => expr,
@@ -810,6 +811,13 @@ impl OxidoParser {
         );
         Ok(str_expr)
     }
+    fn unit_literal(input: Node) -> Result<Expr> {
+        let (line, col) = input.as_span().start_pos().line_col();
+        Ok(Expr::LiteralExpr(
+            Literal::UnitLiteral,
+            SourceLocation { line, col },
+        ))
+    } 
 }
 
 pub fn parse(program: &str) -> Result<Vec<Stmt>> {

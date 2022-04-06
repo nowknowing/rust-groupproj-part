@@ -35,7 +35,7 @@ expr_stmt = { expr ~ ";" }
 
 expr = { assignment }
 
-primary = { integer_literal | string_literal | boolean_literal | grouped_expr | block | return_val | identifier }
+primary = { integer_literal | string_literal | boolean_literal | unit_literal | grouped_expr | block | return_val | identifier }
 
 grouped_expr = { "(" ~ expr ~ ")" }
 
@@ -135,6 +135,8 @@ char = {
     | "\\" ~ ("\"" | "\\" | "/" | "b" | "f" | "n" | "r" | "t")
     | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
 }
+
+unit_literal = { "(" ~ ")" }
 
 WHITESPACE = _{ " " | "\t" | "\r" | "\n" }
 
