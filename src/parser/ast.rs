@@ -57,6 +57,7 @@ pub enum Expr {
         position: SourceLocation,
     },
     ApplicationExpr {
+        is_primitive: Option<PrimitiveOperator>,
         callee: Box<Expr>,
         arguments: Vec<Expr>,
         position: SourceLocation,
@@ -93,6 +94,19 @@ pub enum PrimitiveOperation {
         operator: VariadicOperator,
         operands: Vec<Expr>,
     }
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum PrimitiveOperator {
+    Nullary(NullaryOperator),
+    Unary(UnaryOperator),
+    Binary(BinaryOperator),
+    VariadicOperator(VariadicOperator),
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum NullaryOperator {
+    Main,
 }
 
 #[derive(Debug, Copy, Clone)]

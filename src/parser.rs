@@ -16,6 +16,9 @@ use ast::{
     Block,
     Sequence,
     SequenceStmt,
+    VariadicOperator,
+    PrimitiveOperator,
+    NullaryOperator,
 };
 
 #[derive(Parser)]
@@ -759,10 +762,34 @@ impl OxidoParser {
         ))
     }
     fn function_app(input: Node) -> Result<Expr> {
+        // Since parser doesn't allow infixed functions to be called in a prefixed manner,
+        // we only need to handle for prefixed primitive functions.
+        let get_prefixed_primitive_operator = |callee: &Expr| match callee {
+            Expr::IdentifierExpr(name, _) => match name.as_str() {
+                    "string_from" =>
+                        Some(PrimitiveOperator::Unary(UnaryOperator::StringFrom)),
+                    "drop" =>
+                        Some(PrimitiveOperator::Unary(UnaryOperator::Drop)),
+                    "len" =>
+                        Some(PrimitiveOperator::Unary(UnaryOperator::Len)),
+                    "as_str" =>
+                        Some(PrimitiveOperator::Unary(UnaryOperator::AsStr)),
+                    "push_str" =>
+                        Some(PrimitiveOperator::Unary(UnaryOperator::PushStr)),
+                    "main" =>
+                        Some(PrimitiveOperator::Nullary(NullaryOperator::Main)),
+                    "println" =>
+                        Some(PrimitiveOperator::VariadicOperator(VariadicOperator::Println)),
+                    _ => None,
+                },
+            _ => None,
+        };
+
         let (line, col) = input.as_span().start_pos().line_col();
         Ok(match_nodes!(input.into_children();
             [primary(expr)] => expr,
             [primary(callee), function_arg_list(arguments)] => Expr::ApplicationExpr {
+                is_primitive: get_prefixed_primitive_operator(&callee),
                 callee: Box::from(callee),
                 arguments,
                 position: SourceLocation { line, col },
