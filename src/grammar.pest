@@ -35,7 +35,9 @@ expr_stmt = { expr ~ ";" }
 
 expr = { assignment }
 
-primary = { integer_literal | string_literal | boolean_literal | "(" ~ expr ~ ")" | block | return_val | identifier }
+primary = { integer_literal | string_literal | boolean_literal | grouped_expr | block | return_val | identifier }
+
+grouped_expr = { "(" ~ expr ~ ")" }
 
 assignment = { identifier ~ "=" ~ assignment | disjunction }
 

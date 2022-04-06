@@ -232,10 +232,15 @@ impl OxidoParser {
             [integer_literal(expr)] => expr,
             [string_literal(expr)] => expr,
             [boolean_literal(expr)] => expr,
-            // [grouped(expr)] => expr,
+            [grouped_expr(expr)] => expr,
             [block(expr)] => expr,
             [return_val(expr)] => expr,
             [identifier(expr)] => expr,
+        ))
+    }
+    fn grouped_expr(input: Node) -> Result<Expr> {
+        Ok(match_nodes!(input.into_children();
+            [expr(expr)] => expr,
         ))
     }
     fn assignment(input: Node) -> Result<Expr> {
