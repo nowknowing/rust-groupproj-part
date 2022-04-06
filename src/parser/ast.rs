@@ -106,6 +106,7 @@ pub enum UnaryOperator {
     Drop,
     Len,
     AsStr,
+    PushStr,
 }
 
 #[derive(Debug, Copy, Clone)]
