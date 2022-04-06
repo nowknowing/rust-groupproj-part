@@ -18,7 +18,7 @@ fn main() {
 }
 
 fn calculate_length(s: &String) -> bool {
-    len(s) > 3
+    Len(s) > 3
 }
 
 fn takes_and_gives_back(a_string: String) -> String { // a_string comes into
