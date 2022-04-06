@@ -9,8 +9,23 @@ fn main() {
     //3) **z = 2; OR print z// can use z, y, x.
     println!("{}", z);
 
-    let mut y_prime = &mut x;
+    let mut y_prime = &mut (*y);
+    change_pts(y_prime)
     z = &mut y_prime;
-    **z = 5;
-    println!("{}", x);
+    println!("z: {}", z);
 }
+
+/*
+error[E0499]: cannot borrow `x` as mutable more than once at a time
+  --> borrow_chain_error.rs:12:23
+   |
+3  |     let mut y = &mut x;
+   |                 ------ first mutable borrow occurs here
+...
+12 |     let mut y_prime = &mut x;
+   |                       ^^^^^^ second mutable borrow occurs here
+13 |     **z = 3;
+   |     ------- first borrow later used here
+
+error: aborting due to previous error; 2 warnings emitted
+*/
