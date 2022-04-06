@@ -13,7 +13,7 @@ pub struct SourceLocation {
 
 pub type LifetimeParameter = String;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum DataType {
     Int64,
     Bool,
@@ -27,7 +27,7 @@ pub enum DataType {
 
 pub type Identifier = String;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Literal {
     IntLiteral(i64),
     BoolLiteral(bool),
@@ -35,7 +35,7 @@ pub enum Literal {
     UnitLiteral,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum SequenceStmt {
     Stmt(Stmt),
     Block(Block),
@@ -43,19 +43,19 @@ pub enum SequenceStmt {
 
 pub type Sequence = Vec<SequenceStmt>;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Block {
     pub statements: Sequence,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Expr {
     IdentifierExpr(Identifier, SourceLocation),
     LiteralExpr(Literal, SourceLocation),
     BlockExpr(Box<Block>, SourceLocation),
     PrimitiveOperationExpr(Box<PrimitiveOperation>, SourceLocation),
     AssignmentExpr {
-        name: Identifier,
+        assignee: Box<Expr>,
         value: Box<Expr>,
         position: SourceLocation,
     },
@@ -81,7 +81,7 @@ impl AST for Expr {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum PrimitiveOperation {
     UnaryOperation {
         operator: UnaryOperator,
@@ -98,7 +98,7 @@ pub enum PrimitiveOperation {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub enum UnaryOperator {
     Not,
     UnaryMinus,
@@ -111,7 +111,7 @@ pub enum UnaryOperator {
     AsStr,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub enum BinaryOperator {
     Plus,
     Minus,
@@ -127,14 +127,14 @@ pub enum BinaryOperator {
     Or,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub enum VariadicOperator {
     Println,
 }
 
 pub type FuncParameter = (Identifier, DataType);
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Stmt {
     LetStmt {
         name: Identifier,

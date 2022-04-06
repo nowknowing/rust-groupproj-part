@@ -39,7 +39,7 @@ primary = { integer_literal | string_literal | boolean_literal | grouped_expr | 
 
 grouped_expr = { "(" ~ expr ~ ")" }
 
-assignment = { identifier ~ "=" ~ assignment | disjunction }
+assignment = { (identifier | unary) ~ "=" ~ assignment | disjunction }
 
 disjunction = { conjunction ~ ("||" ~ conjunction)* }
 

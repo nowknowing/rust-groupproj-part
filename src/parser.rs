@@ -245,19 +245,36 @@ impl OxidoParser {
     }
     fn assignment(input: Node) -> Result<Expr> {
         let (line, col) = input.as_span().start_pos().line_col();
-        match_nodes!(input.children();
-            [identifier(ident), assignment(value)] => {
-                if let Expr::IdentifierExpr(name, _) = ident {
-                    Ok(Expr::AssignmentExpr {
-                        name,
-                        value: Box::from(value),
-                        position: SourceLocation { line, col },
-                    })
-                } else {
-                    Err(input.error("Left-hand side of an assignment must be an identifier"))
-                }
+        let position = SourceLocation { line, col };
+        
+        let is_valid_assignee = |assignee: &Expr| match assignee {
+            Expr::IdentifierExpr(_, _) => true,
+            Expr::PrimitiveOperationExpr(operation, _) => match *operation.clone() {
+                PrimitiveOperation::UnaryOperation { operator, .. } => match operator {
+                    UnaryOperator::Dereference => true,
+                    _ => false,
+                },
+                _ => false,
             },
-            [disjunction(d)] => Ok(d),
+            _ => false,
+        };
+
+        let create_assignment_expr = |input: Node, assignee, value, position| 
+            match is_valid_assignee(&assignee) {
+                true => Ok(Expr::AssignmentExpr {
+                    assignee: Box::from(assignee),
+                    value: Box::from(value),
+                    position,
+                }),
+                false => Err(input.error("Expected assignee to be an identifier or a dereferenced expression")),
+            };
+
+        match_nodes!(input.children();
+            [identifier(identifier), assignment(value)] => 
+                create_assignment_expr(input, identifier, value, position),
+            [unary(operation), assignment(value)] => 
+                create_assignment_expr(input, operation, value, position),
+            [disjunction(expr)] => Ok(expr),
         )
     }
     fn disjunction(input: Node) -> Result<Expr> {
