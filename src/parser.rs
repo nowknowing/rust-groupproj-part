@@ -689,12 +689,10 @@ impl OxidoParser {
     }
     fn identifier(input: Node) -> Result<Expr> {
         let (line, col) = input.as_span().start_pos().line_col();
-        let identifier = String::from(input.as_str());
-        let ident_expr = Expr::IdentifierExpr(
-            identifier,
+        Ok(Expr::IdentifierExpr(
+            String::from(input.as_str().trim()),
             SourceLocation { line, col }
-        );
-        Ok(ident_expr)
+        ))
     }
     fn function_declaration(input: Node) -> Result<Stmt> {
         let process_block_expr = |block_expr| match block_expr {
