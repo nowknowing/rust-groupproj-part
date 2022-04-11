@@ -1,3 +1,4 @@
+#[allow(dead_code)]
 mod ast;
 
 use pest_consume::{match_nodes, Error, Parser};
@@ -105,7 +106,7 @@ impl OxidoParser {
     }
     fn datatype(input: Node) -> Result<DataType> {
         Ok(match input.as_str().trim() {
-            "i32" => DataType::Int64,
+            "i64" => DataType::Int64,
             "bool" => DataType::Bool,
             "str" => DataType::Str,
             "String" => DataType::String,
