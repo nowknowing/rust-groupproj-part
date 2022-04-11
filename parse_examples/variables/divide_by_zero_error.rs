@@ -1,7 +1,7 @@
 fn main() {
     let x = 3 / ( 3 - 3);
     let y = 4 / 0;
-    println!("{} {}", x , y);
+    println("{} {}", x , y);
 }
 /*
 error: this operation will panic at runtime

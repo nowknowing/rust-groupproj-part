@@ -7,12 +7,12 @@ fn main() {
     //1) x = 2; OR print x // can only use x. cannot y, cannot z.
     //2) *y = 2; OR print y// can only use y and x.
     //3) **z = 2; OR print z// can use z, y, x.
-    println!("{}", z);
+    println("{}", z);
 
     let mut y_prime = &mut (*y);
     change_pts(y_prime);
     z = &mut y_prime;
-    println!("z: {}", z);
+    println("z: {}", z);
 }
 
 fn change_pts(input_ptr : &mut i64) {
