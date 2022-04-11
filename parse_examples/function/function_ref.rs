@@ -1,14 +1,14 @@
-fn example1 (x: & mut i32 , y: & mut i32 ) -> i32 {
+fn example1 (x: & mut i64 , y: & mut i64 ) -> i64 {
     *x = 42;
     *y = 13;
     *x 
 }
 
-fn example2 (x: & i32, y: & i32) -> i32 {
+fn example2 (x: & i64, y: & i64) -> i64 {
     x + y
 }
 
-fn example3 (x: & i32, y : & i32) -> i32 {
+fn example3 (x: & i64, y : & i64) -> i64 {
     println("{}, {}", x ,y);
     *x
 }

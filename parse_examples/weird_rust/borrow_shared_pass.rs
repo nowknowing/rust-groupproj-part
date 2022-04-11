@@ -1,5 +1,5 @@
 fn main() {
-    let mut x = String::from("hello");
+    let mut x = string_from("hello");
     let y = &mut x;
     let z = &mut *y;
 

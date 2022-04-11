@@ -1,4 +1,4 @@
-fn five() -> i32 {
+fn five() -> i64 {
     5
 }
 
@@ -10,6 +10,6 @@ fn main() {
     println("The value of x is 6: {}", x);
 }
 
-fn plus_one(x: i32) -> i32 {
+fn plus_one(x: i64) -> i64 {
 x + 1
 }

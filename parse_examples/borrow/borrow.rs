@@ -1,5 +1,5 @@
 fn main() {
-    let s1 = StringFrom("hello");
+    let s1 = string_from("hello");
 
     let longer_than_three = calculate_length(&s1);
 
@@ -18,7 +18,7 @@ fn main() {
 }
 
 fn calculate_length(s: &String) -> bool {
-    Len(s) > 3
+    len(s) > 3
 }
 
 fn takes_and_gives_back(a_string: String) -> String { // a_string comes into

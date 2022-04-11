@@ -10,9 +10,13 @@ fn main() {
     println!("{}", z);
 
     let mut y_prime = &mut (*y);
-    change_pts(y_prime)
+    change_pts(y_prime);
     z = &mut y_prime;
     println!("z: {}", z);
+}
+
+fn change_pts(input_ptr : &mut i64) {
+   *input_ptr = 5;
 }
 
 /*

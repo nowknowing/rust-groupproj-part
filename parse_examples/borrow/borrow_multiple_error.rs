@@ -1,18 +1,18 @@
 fn main() {
     //only once of mutable is allowed. first mutable later used.
-    let mut s = StringFrom("hello");
+    let mut s = string_from("hello");
     let r1 = &mut s;
     let r2 = &mut s;
     println("{}, {}", r1, r2);
 
     //if immutably borrowed, no mutable borrow allowed. immutable later used.
-    let mut m  = StringFrom("world");
+    let mut m  = string_from("world");
     let m1 = & m;
     let m2 = &mut m;
     println("{} {}", m1, m2);
 
     // cannot borrow mutable after immutable.
-    let mut n = StringFrom("hey");
+    let mut n = string_from("hey");
     let n1 = &mut n;
     let n2 = & n;
     println("{} {}", n1, n2);

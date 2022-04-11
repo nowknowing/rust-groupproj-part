@@ -1,7 +1,7 @@
 fn main() {
     fn longest<'a>(x: &str, y: &str) -> &'a str {
-        let result = StringFrom("really long string");
-        AsStr(result)
+        let result = string_from("really long string");
+        as_str(result)
     }
 }
 /*

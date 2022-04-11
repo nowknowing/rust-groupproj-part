@@ -1,11 +1,11 @@
 fn main() {
-    let mut x = String::from("hello");
+    let mut x = string_from("hello");
     let y = &x;
     let z = &x;
     println("y: {}", y);
     println("z: {}", z);
 
-    x.push_str(", world");
+    push_str(x, ", world");
     println("x: {}", x);
 
 }
