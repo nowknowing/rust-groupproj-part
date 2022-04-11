@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+#[allow(dead_code)]
 use std::fmt::Debug;
 
 pub trait AST {
@@ -13,7 +13,7 @@ pub struct SourceLocation {
 
 pub type LifetimeParameter = String;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum DataType {
     Int64,
     Bool,
@@ -25,9 +25,7 @@ pub enum DataType {
     Func(Vec<LifetimeParameter>, Vec<DataType>, Box<DataType>),
 }
 
-pub type Identifier = String;
-
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Literal {
     IntLiteral(i64),
     BoolLiteral(bool),
@@ -35,7 +33,7 @@ pub enum Literal {
     UnitLiteral,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum SequenceStmt {
     Stmt(Stmt),
     Block(Block),
@@ -43,23 +41,24 @@ pub enum SequenceStmt {
 
 pub type Sequence = Vec<SequenceStmt>;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Block {
     pub statements: Sequence,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Expr {
-    IdentifierExpr(Identifier, SourceLocation),
+    IdentifierExpr(String, SourceLocation),
     LiteralExpr(Literal, SourceLocation),
     BlockExpr(Box<Block>, SourceLocation),
     PrimitiveOperationExpr(Box<PrimitiveOperation>, SourceLocation),
     AssignmentExpr {
-        name: Identifier,
+        assignee: Box<Expr>,
         value: Box<Expr>,
         position: SourceLocation,
     },
     ApplicationExpr {
+        is_primitive: Option<PrimitiveOperator>,
         callee: Box<Expr>,
         arguments: Vec<Expr>,
         position: SourceLocation,
@@ -81,7 +80,7 @@ impl AST for Expr {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum PrimitiveOperation {
     UnaryOperation {
         operator: UnaryOperator,
@@ -98,7 +97,20 @@ pub enum PrimitiveOperation {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
+pub enum PrimitiveOperator {
+    Nullary(NullaryOperator),
+    Unary(UnaryOperator),
+    Binary(BinaryOperator),
+    VariadicOperator(VariadicOperator),
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum NullaryOperator {
+    Main,
+}
+
+#[derive(Debug, Copy, Clone)]
 pub enum UnaryOperator {
     Not,
     UnaryMinus,
@@ -109,9 +121,10 @@ pub enum UnaryOperator {
     Drop,
     Len,
     AsStr,
+    PushStr,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub enum BinaryOperator {
     Plus,
     Minus,
@@ -127,31 +140,31 @@ pub enum BinaryOperator {
     Or,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub enum VariadicOperator {
     Println,
 }
 
-pub type FuncParameter = (Identifier, DataType);
+pub type FuncParameter = (Expr, DataType);
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Stmt {
     LetStmt {
-        name: Identifier,
+        name: Expr,
         is_mutable: bool,
         annotation: Option<DataType>,
         value: Option<Expr>,
         position: SourceLocation,
     },
     StaticStmt {
-        name: Identifier,
+        name: Expr,
         is_mutable: bool,
         annotation: DataType,
         value: Expr,
         position: SourceLocation,
     },
     FuncDeclaration {
-        name: Identifier,
+        name: Expr,
         lifetime_parameters: Vec<LifetimeParameter>,
         parameters: Vec<FuncParameter>,
         return_type: DataType,
