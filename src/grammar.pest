@@ -15,7 +15,7 @@ static_declaration = {
 
 mutable_specifier = { "mut " }
 
-datatype = { "i32" | "bool" | "str" | "String" | "()" | function_datatype | reference_datatype }
+datatype = { "i64" | "bool" | "str" | "String" | "()" | function_datatype | reference_datatype }
 
 reference_datatype = { "&" ~ lifetime_type_variable? ~ mutable_specifier? ~ datatype }
 
