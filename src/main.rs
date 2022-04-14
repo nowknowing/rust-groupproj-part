@@ -1,4 +1,5 @@
 mod parser;
+mod static_checker;
 
 use std::env;
 use std::fs;
@@ -12,6 +13,16 @@ fn main() {
     }
 
     let source = fs::read_to_string(&args[1]).expect("Unable to read file");
-    let result = parser::parse(&source);
+    let result = parser::parse(&source);    
+    //let ast = parser::parse(&source).expect("Failed to parse given program");
+    
+/*
+    match result {
+        Ok(v) => static_checker::get_main(&v),
+        _=> println!("{:#?}", result),
+
+    }
+    */
+    
     println!("{:#?}", result);
 }

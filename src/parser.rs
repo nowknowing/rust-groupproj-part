@@ -1,5 +1,5 @@
 #[allow(dead_code)]
-mod ast;
+pub mod ast;
 
 use pest_consume::{match_nodes, Error, Parser};
 use ast::{
