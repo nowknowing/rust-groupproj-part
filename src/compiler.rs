@@ -3,7 +3,17 @@ pub mod instructions;
 pub mod error;
 
 use std::collections::{HashMap, LinkedList};
-use crate::parser::ast::{Expr, Literal, Stmt, SequenceStmt, SourceLocation};
+use crate::parser::ast::{
+    Expr,
+    Literal,
+    PrimitiveOperation,
+    UnaryOperator,
+    BinaryOperator,
+    VariadicOperator,
+    Stmt,
+    SequenceStmt,
+    SourceLocation
+};
 use instructions::Instruction;
 use error::Error;
 
@@ -13,17 +23,6 @@ type ExpiredLifetimes = HashMap<usize, Vec<String>>;
 type IndexTable = LinkedList<(String, usize)>;
 
 pub fn compile(ast: &Vec<Stmt>, drop_at: &ExpiredLifetimes) -> CompileResult {
-    let accumulate_bytecode = |acc: CompileResult, result| match acc {
-        Ok(mut program_bytecode) => match result {
-            Ok(bytecode) => {
-                program_bytecode.extend(bytecode);
-                Ok(program_bytecode)
-            },
-            err@Err(_) => err,
-        },
-        err@Err(_) => err,
-    };
-
     let mut index_table: IndexTable = LinkedList::new();
     let mut has_main_function = false;
 
@@ -88,6 +87,19 @@ fn index_of(index_table: &IndexTable, name: &str, position: Option<SourceLocatio
         message: format!("The name \"{}\" is not found", name),
         position,
     })
+}
+
+fn accumulate_bytecode (acc: CompileResult, result: CompileResult) -> CompileResult {
+    match acc {
+        Ok(mut program_bytecode) => match result {
+            Ok(bytecode) => {
+                program_bytecode.extend(bytecode);
+                Ok(program_bytecode)
+            },
+            err@Err(_) => err,
+        },
+        err@Err(_) => err,
+    }
 }
 
 fn compile_top_level(stmt: &Stmt, drop_at: &ExpiredLifetimes, index_table: &mut IndexTable) -> CompileResult {
@@ -155,7 +167,11 @@ impl Compile for Expr {
                 Ok(bytecode)
             },
             Expr::BlockExpr(block, position) => Ok(vec![]),
-            Expr::PrimitiveOperationExpr(op, position) => Ok(vec![]),
+            Expr::PrimitiveOperationExpr(op, position) => {
+                let mut bytecode = op.compile(drop_at, index_table)?;
+                bytecode.extend(self.compile_drops(position, drop_at)?);
+                Ok(bytecode)
+            },
             Expr::AssignmentExpr { assignee, value, position } => {
                 let assignee_name = get_identifier_name(assignee)?;
                 let index = index_of(index_table, &assignee_name, Some(position.clone()))?;
@@ -168,6 +184,61 @@ impl Compile for Expr {
             },
             expr@Expr::ApplicationExpr { .. } => Ok(vec![]),
             expr@Expr::ReturnExpr(expr_to_return, position) => Ok(vec![]),
+        }
+    }
+}
+
+impl Compile for PrimitiveOperation {
+    fn compile(&self, drop_at: &ExpiredLifetimes, index_table: &mut IndexTable) -> CompileResult {
+        match self {
+            PrimitiveOperation::UnaryOperation { operator, operand } => {
+                let instruction = match operator {
+                    UnaryOperator::Not => Instruction::NOT,
+                    UnaryOperator::UnaryMinus => Instruction::UMINUS,
+                    UnaryOperator::ImmutableBorrow => unimplemented!(),
+                    UnaryOperator::MutableBorrow => unimplemented!(),
+                    UnaryOperator::Dereference => unimplemented!(),
+                    UnaryOperator::StringFrom => unimplemented!(),
+                    UnaryOperator::Drop => unimplemented!(),
+                    UnaryOperator::Len => unimplemented!(),
+                    UnaryOperator::AsStr => unimplemented!(),
+                    UnaryOperator::PushStr => unimplemented!(),
+                };
+                let mut bytecode = operand.compile(drop_at, index_table)?;
+                bytecode.push(instruction);
+                Ok(bytecode)
+            },
+            PrimitiveOperation::BinaryOperation { operator, first_operand, second_operand } => {
+                let instructions = match operator {
+                    BinaryOperator::Plus => vec![Instruction::PLUS],
+                    BinaryOperator::Minus => vec![Instruction::MINUS],
+                    BinaryOperator::Times => vec![Instruction::TIMES],
+                    BinaryOperator::Divide => vec![Instruction::DIV],
+                    BinaryOperator::Equal => vec![Instruction::EQUAL],
+                    BinaryOperator::NotEqual => vec![Instruction::EQUAL, Instruction::NOT],
+                    BinaryOperator::Greater => vec![Instruction::GREATER],
+                    BinaryOperator::GreaterOrEqual => vec![Instruction::GEQ],
+                    BinaryOperator::Less => vec![Instruction::LESS],
+                    BinaryOperator::LessOrEqual => vec![Instruction::LEQ],
+                    BinaryOperator::And => vec![Instruction::AND],
+                    BinaryOperator::Or => vec![Instruction::OR],
+                };
+                let mut bytecode = first_operand.compile(drop_at, index_table)?;
+                bytecode.extend(second_operand.compile(drop_at, index_table)?);
+                bytecode.extend(instructions);
+                Ok(bytecode)
+            }
+            PrimitiveOperation::VariadicOperation { operator, operands } => {
+                let instruction = match operator {
+                    VariadicOperator::Println => unimplemented!(),
+                };
+                let bytecode = operands
+                    .iter()
+                    .map(|expr| expr.compile(drop_at, index_table))
+                    .fold(Ok(vec![]), accumulate_bytecode)?;
+                bytecode.push(instruction);
+                Ok(bytecode)
+            }
         }
     }
 }
