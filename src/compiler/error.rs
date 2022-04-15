@@ -6,7 +6,7 @@ use crate::parser::ast::SourceLocation;
 #[derive(Debug)]
 pub struct Error {
     pub message: String,
-    // pub position: SourceLocation,
+    pub position: Option<SourceLocation>,
 }
 
 impl Display for Error {

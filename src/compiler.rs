@@ -70,9 +70,10 @@ fn scan_declaration_names(stmts: &Vec<Stmt>) -> Result<Vec<String>> {
 
 fn get_identifier_name(expr: &Expr) -> Result<String> {
     match expr {
-        Expr::IdentifierExpr(name, _) => Ok(name.clone()),
+        Expr::IdentifierExpr(name, position) => Ok(name.clone()),
         _ => Err(Error {
             message: String::from("Expected an identifier to get a name from"),
+            position: None,
         })
     }
 }
@@ -88,9 +89,10 @@ fn index_of(index_table: &IndexTable, name: &str) -> Option<usize> {
 
 fn compile_top_level(stmt: &Stmt, drop_at: &ExpiredLifetimes, index_table: &mut IndexTable) -> CompileResult {
     match stmt {
-        Stmt::FuncDeclaration { .. } => stmt.compile(drop_at, index_table),
+        Stmt::FuncDeclaration { position, .. } => stmt.compile(drop_at, index_table),
         _ => Err(Error {
-            message: String::from("Only function declarations are allowed at the top-level")
+            message: String::from("Only function declarations are allowed at the top-level"),
+            position: None,
         })
     }
 }
@@ -114,6 +116,7 @@ impl Compile for Stmt {
                         Some(index) => Ok(index),
                         None => Err(Error {
                             message: format!("Unable to find \"{}\" in the index table", name),
+                            position: Some(position.clone()),
                         })
                     }?;
                     bytecode.push(Instruction::ASSIGN(index));
@@ -122,13 +125,15 @@ impl Compile for Stmt {
                 },
                 None => Err(Error {
                     message: format!("Unbounded declaration \"{}\" found and is presently unsupported", 
-                        get_identifier_name(name)?)
+                        get_identifier_name(name)?),
+                    position: Some(position.clone()),
                 })
             },
             stmt@Stmt::FuncDeclaration { .. } => Ok(vec![]),
             stmt@Stmt::ExprStmt { .. } => Ok(vec![]),
             _ => Err(Error {
-                message: String::from("The given statement type is presently unsupported")
+                message: String::from("The given statement type is presently unsupported"),
+                position: None,
             })
         }
     }
@@ -140,7 +145,8 @@ impl Compile for Expr {
             Expr::IdentifierExpr(name, position) => match index_of(&index_table, name) {
                 Some(index) => Ok(vec![Instruction::LD(index)]),
                 None => Err(Error {
-                    message: format!("The name \"{}\" is not found", name)
+                    message: format!("The name \"{}\" is not found", name),
+                    position: Some(position.clone()),
                 })
             },
             Expr::LiteralExpr(value, position) => {
