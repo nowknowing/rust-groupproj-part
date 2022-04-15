@@ -24,7 +24,7 @@ pub enum Instruction {
     POP,
     ASSIGN,
     LDF(usize),
-    CALL(isize),
+    CALL(usize),
     RTN,
     DONE
 }
