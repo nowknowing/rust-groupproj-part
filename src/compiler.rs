@@ -78,13 +78,16 @@ fn get_identifier_name(expr: &Expr) -> Result<String> {
     }
 }
 
-fn index_of(index_table: &IndexTable, name: &str) -> Option<usize> {
+fn index_of(index_table: &IndexTable, name: &str, position: Option<SourceLocation>) -> Result<usize> {
     for (corresponding_name, index) in index_table {
         if name == corresponding_name {
-            return Some(index.clone())
+            return Ok(index.clone())
         }
     }
-    None
+    Err(Error {
+        message: format!("The name \"{}\" is not found", name),
+        position,
+    })
 }
 
 fn compile_top_level(stmt: &Stmt, drop_at: &ExpiredLifetimes, index_table: &mut IndexTable) -> CompileResult {
@@ -112,13 +115,7 @@ impl Compile for Stmt {
                 Some(expr) => {
                     let mut bytecode = expr.compile(drop_at, index_table)?;
                     let name = get_identifier_name(name)?;
-                    let index = match index_of(index_table, &name) {
-                        Some(index) => Ok(index),
-                        None => Err(Error {
-                            message: format!("Unable to find \"{}\" in the index table", name),
-                            position: Some(position.clone()),
-                        })
-                    }?;
+                    let index = index_of(index_table, &name, Some(position.clone()))?;
                     bytecode.push(Instruction::ASSIGN(index));
                     bytecode.extend(self.compile_drops(position, drop_at)?);
                     Ok(bytecode)
@@ -148,13 +145,10 @@ impl Compile for Stmt {
 impl Compile for Expr {
     fn compile(&self, drop_at: &ExpiredLifetimes, index_table: &mut IndexTable) -> CompileResult {
         match self {
-            Expr::IdentifierExpr(name, position) => match index_of(&index_table, name) {
-                Some(index) => Ok(vec![Instruction::LD(index)]),
-                None => Err(Error {
-                    message: format!("The name \"{}\" is not found", name),
-                    position: Some(position.clone()),
-                })
-            },
+            Expr::IdentifierExpr(name, position) => {
+                let index = index_of(index_table, name, Some(position.clone()))?;
+                Ok(vec![Instruction::LD(index)])
+            }
             Expr::LiteralExpr(value, position) => {
                 let mut bytecode = value.compile(drop_at, index_table)?;
                 bytecode.extend(self.compile_drops(position, drop_at)?);
@@ -162,7 +156,16 @@ impl Compile for Expr {
             },
             Expr::BlockExpr(block, position) => Ok(vec![]),
             Expr::PrimitiveOperationExpr(op, position) => Ok(vec![]),
-            expr@Expr::AssignmentExpr { .. } => Ok(vec![]),
+            Expr::AssignmentExpr { assignee, value, position } => {
+                let assignee_name = get_identifier_name(assignee)?;
+                let index = index_of(index_table, &assignee_name, Some(position.clone()))?;
+
+                let mut bytecode = value.compile(drop_at, index_table)?;
+                bytecode.push(Instruction::ASSIGN(index));
+                bytecode.extend(self.compile_drops(position, drop_at)?);
+
+                Ok(bytecode)
+            },
             expr@Expr::ApplicationExpr { .. } => Ok(vec![]),
             expr@Expr::ReturnExpr(expr_to_return, position) => Ok(vec![]),
         }
