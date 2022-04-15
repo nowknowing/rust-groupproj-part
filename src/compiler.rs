@@ -130,7 +130,13 @@ impl Compile for Stmt {
                 })
             },
             stmt@Stmt::FuncDeclaration { .. } => Ok(vec![]),
-            stmt@Stmt::ExprStmt { .. } => Ok(vec![]),
+            Stmt::ExprStmt(expr) => {
+                let mut bytecode = expr.compile(drop_at, index_table)?;
+                bytecode.push(Instruction::POP); // TODO: Do we need this?
+                // Expression has position, so it will handle the drops.
+                // bytecode.extend(self.compile_drops(position, drop_at)?);
+                Ok(bytecode)
+            },
             _ => Err(Error {
                 message: String::from("The given statement type is presently unsupported"),
                 position: None,
