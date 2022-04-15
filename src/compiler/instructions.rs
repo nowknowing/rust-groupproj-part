@@ -22,7 +22,7 @@ pub enum Instruction {
     UMINUS,
     // Others.
     POP,
-    ASSIGN,
+    ASSIGN(usize),
     LDF(usize),
     CALL(usize),
     RTN,

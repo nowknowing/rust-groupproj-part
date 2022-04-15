@@ -47,13 +47,6 @@ pub fn compile(ast: &Vec<Stmt>, drop_at: &ExpiredLifetimes) -> CompileResult {
 }
 
 fn scan_declaration_names(stmts: &Vec<Stmt>) -> Result<Vec<String>> {
-    let get_identifier_name = |expr: &Expr| match expr {
-        Expr::IdentifierExpr(name, _) => Ok(name.clone()),
-        _ => Err(Error {
-            message: String::from("Expected an identifier to get a name from"),
-        })
-    };
-
     let scan_stmt = |stmt: &Stmt| match stmt {
         Stmt::LetStmt { name, .. } => {
             let name = get_identifier_name(name)?;
@@ -73,6 +66,24 @@ fn scan_declaration_names(stmts: &Vec<Stmt>) -> Result<Vec<String>> {
             names.extend(result?);
             Ok(names)
         })
+}
+
+fn get_identifier_name(expr: &Expr) -> Result<String> {
+    match expr {
+        Expr::IdentifierExpr(name, _) => Ok(name.clone()),
+        _ => Err(Error {
+            message: String::from("Expected an identifier to get a name from"),
+        })
+    }
+}
+
+fn index_of(index_table: &IndexTable, name: &str) -> Option<usize> {
+    for (corresponding_name, index) in index_table {
+        if name == corresponding_name {
+            return Some(index.clone())
+        }
+    }
+    None
 }
 
 fn compile_top_level(stmt: &Stmt, drop_at: &ExpiredLifetimes, index_table: &mut IndexTable) -> CompileResult {
@@ -95,7 +106,25 @@ pub trait Compile {
 impl Compile for Stmt {
     fn compile(&self, drop_at: &ExpiredLifetimes, index_table: &mut IndexTable) -> CompileResult {
         match self {
-            stmt@Stmt::LetStmt { .. } => Ok(vec![]),
+            Stmt::LetStmt { name, value, position, .. } => match value {
+                Some(expr) => {
+                    let mut bytecode = expr.compile(drop_at, index_table)?;
+                    let name = get_identifier_name(name)?;
+                    let index = match index_of(index_table, &name) {
+                        Some(index) => Ok(index),
+                        None => Err(Error {
+                            message: format!("Unable to find \"{}\" in the index table", name),
+                        })
+                    }?;
+                    bytecode.push(Instruction::ASSIGN(index));
+                    bytecode.extend(self.compile_drops(position, drop_at)?);
+                    Ok(bytecode)
+                },
+                None => Err(Error {
+                    message: format!("Unbounded declaration \"{}\" found and is presently unsupported", 
+                        get_identifier_name(name)?)
+                })
+            },
             stmt@Stmt::FuncDeclaration { .. } => Ok(vec![]),
             stmt@Stmt::ExprStmt { .. } => Ok(vec![]),
             _ => Err(Error {
@@ -108,7 +137,12 @@ impl Compile for Stmt {
 impl Compile for Expr {
     fn compile(&self, drop_at: &ExpiredLifetimes, index_table: &mut IndexTable) -> CompileResult {
         match self {
-            Expr::IdentifierExpr(name, position) => Ok(vec![]),
+            Expr::IdentifierExpr(name, position) => match index_of(&index_table, name) {
+                Some(index) => Ok(vec![Instruction::LD(index)]),
+                None => Err(Error {
+                    message: format!("The name \"{}\" is not found", name)
+                })
+            },
             Expr::LiteralExpr(value, position) => {
                 let mut bytecode = value.compile(drop_at, index_table)?;
                 bytecode.extend(self.compile_drops(position, drop_at)?);
