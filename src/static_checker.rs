@@ -1,25 +1,148 @@
 #![allow(dead_code)]
-use crate::parser::ast::Stmt;
-use crate::parser::ast::Block;
-use crate::parser::ast::Sequence;
-use crate::parser::ast::SequenceStmt;
-use crate::parser::ast::FuncParameter;
-use crate::parser::ast::Expr;
-use crate::parser::ast::DataType;
-use crate::parser::ast::Literal;
-use crate::parser::ast::PrimitiveOperation;
-use crate::parser::ast::UnaryOperator;
-use crate::parser::ast::BinaryOperator;
+use crate::parser::ast::
+{AST, Stmt, Block, Sequence, SequenceStmt, FuncParameter, Expr, DataType, Literal, 
+    PrimitiveOperation, UnaryOperator, BinaryOperator};
+use std::collections::{HashMap, LinkedList};
 
 pub fn get_main(parsed_stmt : &Vec<Stmt>) {// assume there's only one top-level main function
-    let main_fn :& Stmt = & (*parsed_stmt)[0];
+let main_fn :& Stmt = & (*parsed_stmt)[0];
     if is_function_declaration(main_fn) {
       let ptr_to_first_seq_stmt= & (*function_declaration_body(main_fn))[0];
       let it_is_expr = is_expression_statement(sequence_statement(ptr_to_first_seq_stmt));
       println!("IT IS EXPR STMT {}", it_is_expr);
     }
 }
+
+
+//BlockExpr(content of main)
 //at every =, check type of val equals type of name.
+// let will not have type declaration
+type ExpiredLifetimes = HashMap<usize, Vec<String>>;
+type Environment = LinkedList<u64>;
+
+fn type_statement(stmt : &  Stmt, env : &mut  Environment)  -> DataType {
+    if is_let_statement(stmt) {
+        let name = let_statement_name(stmt);
+        //check_duplicate(name, env); // check for duplicate in scope.
+
+        let rhs = non_optional_value(let_statement_value(stmt));
+        //handle_stack(rhs, env); // handle right hand side uses only. MODIFIES STACK
+
+        let type_of_variable = type_expression(non_optional_value(let_statement_value(stmt)), env);
+        //let degree = degree(non_optional_value(let_statement_value(stmt)), env);
+        let mutability = is_mutable_let_statement(stmt);
+       // set_variable(name, *type_of_variable, mutability, degree);  // updates stack. MODIFIES STACK
+        
+        return DataType::Unit;
+    } else if is_function_declaration(stmt) {
+        let function_name = function_declaration_name(stmt);
+       // check_duplicate(function_name, env);      // no overloading allowed
+       // check_function_sanity(stmt, env); // checks on block sanity. + return type consistency
+        
+        let params = function_declaration_parameters(stmt);
+        let return_type = function_declaration_return_type(stmt); // Unit if returns nothing.
+
+        //set_function(function_name, params, return_type);
+        return DataType::Unit;
+    } else if is_expression_statement(stmt) {
+        return type_expression(expression_statement(stmt), env);
+    } else {  
+        return DataType::Unit;
+    }
+}
+
+fn type_expression(expr : &  Expr, env : & mut Environment) -> DataType {
+    if is_identifier_expression(expr) {
+       unimplemented!();
+        // lookup_type(identifier(expr), env);
+    } else if is_literal(expr) {
+        if is_integer_literal(literal(expr)) {
+            return DataType::Int64;
+        } else if is_boolean_literal(literal(expr)) {
+            return DataType::Bool;
+        } else if is_string_literal(literal(expr)) {
+            return DataType::String;
+        } else if is_unit_literal(literal(expr)) {
+            return DataType::Unit;
+        } else {
+            panic!("unknown literal");
+        }
+    } else if is_block_expression(expr) {  //
+        let mut seq_copy = statements_of_block(block_of_expression(expr)).clone();
+        let (dt, hs) = type_and_handle_sequence(&mut seq_copy, env);
+        return dt;
+    } else if is_return_expression(expr) {
+        return type_expression(return_expression(expr), env); // MUST DO
+    } else if is_function_application_expression(expr) {
+        unimplemented!();
+        // type_application(function_name(expr), function_arguments(expr), env);
+    } else {
+        panic!("Type Error at {:#?} for {:#?}", expr.get_source_location(), expr);
+    }
+}
+
+
+//MUST HAVE RETURN STATEMENT SOMEWHERE. OTHERWISE RETURN NONE.
+fn type_and_handle_sequence(sequence : &mut Sequence, env : & mut Environment) -> (DataType, bool) { // must have return o
+    if is_empty_sequence(sequence) {
+        return (DataType::Unit, false);
+        //SB here
+    } else if is_last_statement_of_sequence(sequence) { // MUST BE RETURN. OTHERWISE NONE. HANDLE HERE.
+        match first_statement_of_sequence(sequence) {
+            SequenceStmt::Stmt(stmt) => 
+                match stmt {
+                    Stmt::ExprStmt(expr) => 
+                     if is_return_expression(expr) {
+                         return (type_expression(expr, env), true);   
+                     } else {
+                         let curr_stmt_type = type_expression(expr, env);
+                         return (DataType::Unit, false);
+                     },
+                    _ => {
+                        let curr_stmt_type = type_statement(stmt, env);
+                        return (DataType::Unit, false);
+                    },
+                },
+            SequenceStmt::Block(block) => {
+                let mut mut_seq = statements_of_block(block).clone();
+                return type_and_handle_sequence(&mut mut_seq, env);
+            },
+        }
+    } else { // IF RETURN, PANIC IF EARLY END.
+        match first_statement_of_sequence(sequence) {
+            SequenceStmt::Stmt(stmt) => 
+                match stmt {
+                    Stmt::ExprStmt(expr) => 
+                    panic! ("Unreacheable statement not allowed at {:#?} for {:#?}", stmt.get_source_location(), expr),
+                    _ => {let curr_stmt_type = type_statement(stmt, env);
+                          return type_and_handle_sequence(rest_statements_of_sequence(sequence), env)},
+                },
+            SequenceStmt::Block(block) => {
+                let mut mut_seq = statements_of_block(block).clone();
+                let (datatype, has_return) = type_and_handle_sequence(&mut mut_seq, env);
+                if has_return {
+                    panic! ("Unreacheable statement not allowed for {:#?}", block);
+                }
+                return type_and_handle_sequence(rest_statements_of_sequence(sequence), env);
+            },
+        }
+    }
+}
+
+fn is_empty_sequence(sequence : &mut Sequence) -> bool {
+    return sequence.is_empty();
+}
+fn is_last_statement_of_sequence(sequence : &mut Sequence) -> bool {
+    return sequence.len() == 1;
+}
+fn first_statement_of_sequence(sequence : &mut Sequence) -> & SequenceStmt {
+    return & sequence[0];
+}
+fn rest_statements_of_sequence(sequence : &mut Sequence) -> &mut Sequence {
+    let lastIdx = sequence.len() - 1;
+    sequence.remove(0);
+    return sequence;
+}
 
 
 /*LET STATEMENTS Constant declarations*/
@@ -61,6 +184,14 @@ fn non_optional_value(non_optional_let_value : & Option<Expr>) -> & Expr {// ass
         None => panic!("No right hand side in let statement"),
     }
 }
+fn is_mutable_let_statement(stmt : & Stmt) -> bool { 
+    match stmt {
+        Stmt::LetStmt {is_mutable, ..}
+         => return *is_mutable,
+         _ => panic!("No let statement in call for its mutability: {:#?}", stmt),
+
+    }
+}
 
 
 /*FUNCTION DECLARATIONS*/
@@ -95,7 +226,13 @@ fn function_declaration_body(stmt : & Stmt) -> & Sequence {
          _ => panic!("No function declaration in call for its parameters : {:#?}", stmt)
     }
 }
-
+fn function_declaration_return_type(stmt : & Stmt) -> & DataType {
+    match stmt {
+        Stmt::FuncDeclaration {return_type, ..}
+         => return return_type,
+         _ => panic!("No function declaration in call for its return type : {:#?}", stmt)
+    }
+}
 // assume no static statements
 
 /* EXPRESSION STATEMENTS*/
@@ -192,6 +329,13 @@ fn block_of_expression(expr : & Expr) -> & Block {
             => return boxed_block,
             _ => panic!("Block expression is not present. {:#?}", expr),
     }
+}
+fn statements_of_block(block : & Block) -> & Sequence {
+    match block {
+        Block{statements}
+            => return statements,
+            _ => panic!("Block expression is not present at call to sequence. {:#?}", block),
+    } 
 }
 //OPERATIONS
 fn is_primitive_operation_expression(expr : & Expr) -> bool{
@@ -340,9 +484,32 @@ fn sequence_block(sequence_stmt : & SequenceStmt) -> & Block {
     }
 }
 
+type FunctionStore = (String, Vec<DataType>, DataType);
+
+
+/*
+Not,
+UnaryMinus,
+ImmutableBorrow,//undone
+MutableBorrow,//undone
+Dereference,//undone
+StringFrom,
+Drop,
+Len,
+AsStr,
+PushStr, // undone
 
 
 
+Int64,
+Bool,
+Str,
+String,
+Unit,
+Ref(Option<LifetimeParameter>, Box<DataType>),
+MutRef(Option<LifetimeParameter>, Box<DataType>),
+Func(Vec<LifetimeParameter>, Vec<DataType>, Box<DataType>),
+*/
 
 /*fn boolean_literal(literal : & Literal) -> bool { 
     match literal {
