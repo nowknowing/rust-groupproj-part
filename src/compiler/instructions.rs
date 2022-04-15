@@ -22,8 +22,9 @@ pub enum Instruction {
     UMINUS,
     // Others.
     POP,
+    GOTOR(usize),
     ASSIGN(usize),
-    LDF(usize),
+    LDF(usize, usize, usize), // max stack size, func body address, number of declarations (params + locals)
     CALL(usize),
     RTN,
     DONE

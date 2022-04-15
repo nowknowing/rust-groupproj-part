@@ -4,6 +4,7 @@ pub mod error;
 
 use std::collections::{HashMap, LinkedList};
 use crate::parser::ast::{
+    Block,
     Expr,
     Literal,
     PrimitiveOperation,
@@ -25,6 +26,7 @@ type IndexTable = LinkedList<(String, usize)>;
 pub fn compile(ast: &Vec<Stmt>, drop_at: &ExpiredLifetimes) -> CompileResult {
     let mut index_table: IndexTable = LinkedList::new();
     let mut has_main_function = false;
+    let mut main_function_index = 0;
 
     scan_declaration_names(ast)?
         .into_iter()
@@ -32,6 +34,7 @@ pub fn compile(ast: &Vec<Stmt>, drop_at: &ExpiredLifetimes) -> CompileResult {
         .for_each(|(index, name)| {
             if name == "main" {
                 has_main_function = true;
+                main_function_index = index;
             }
             index_table.push_front((name, index));
         });
@@ -40,9 +43,15 @@ pub fn compile(ast: &Vec<Stmt>, drop_at: &ExpiredLifetimes) -> CompileResult {
         return Ok(vec![Instruction::START, Instruction::DONE])
     }
 
-    ast.iter()
+    let mut bytecode = ast.iter()
         .map(|stmt| compile_top_level(stmt, drop_at, &mut index_table))
-        .fold(Ok(vec![Instruction::START]), accumulate_bytecode)
+        .fold(Ok(vec![Instruction::START]), accumulate_bytecode)?;
+    bytecode.extend(vec![
+        Instruction::LD(main_function_index),
+        Instruction::CALL(0),
+        Instruction::DONE]);
+
+    Ok(bytecode)
 }
 
 fn scan_declaration_names(stmts: &Vec<Stmt>) -> Result<Vec<String>> {
@@ -102,6 +111,12 @@ fn accumulate_bytecode (acc: CompileResult, result: CompileResult) -> CompileRes
     }
 }
 
+fn undo_index_table_changes(index_table: &mut IndexTable, undo_times: usize) {
+    (0..undo_times).for_each(|_| {
+        index_table.pop_front();
+    });
+}
+
 fn compile_top_level(stmt: &Stmt, drop_at: &ExpiredLifetimes, index_table: &mut IndexTable) -> CompileResult {
     match stmt {
         Stmt::FuncDeclaration { position, .. } => stmt.compile(drop_at, index_table),
@@ -138,7 +153,59 @@ impl Compile for Stmt {
                     position: Some(position.clone()),
                 })
             },
-            stmt@Stmt::FuncDeclaration { .. } => Ok(vec![]),
+            Stmt::FuncDeclaration { name, parameters, body, position, .. } => {
+                let filtered_body: Vec<Stmt> = body.statements
+                    .iter()
+                    .fold(vec![], |mut stmts, seq_stmt| match seq_stmt {
+                        SequenceStmt::Stmt(stmt) => {
+                            stmts.push(stmt.clone());
+                            stmts
+                        },
+                        _ => stmts,
+                    });
+
+                let locals = scan_declaration_names(&filtered_body)?;
+                let params = parameters
+                    .iter()
+                    .map(|(expr, _)| get_identifier_name(expr))
+                    .collect::<Result<Vec<String>>>()?;
+                let mut declarations = params;
+                declarations.extend(locals);
+
+                let num_of_declarations = declarations.len();
+
+                declarations
+                    .into_iter()
+                    .for_each(|name| {
+                        index_table.push_front((name, index_table.len()));
+                    });
+                // println!("-----------");
+                // for (name, index) in index_table.iter() {
+                //     println!("{:#?}, {:#?}", name, index);
+                // }
+
+                let body_bytecode = body.compile(drop_at, index_table)?;
+
+                let func_name = get_identifier_name(name)?;
+                let func_index = index_of(index_table, &func_name, Some(position.clone()))?;
+
+                // It should be possible to compute and store PC(LDF) + 1 and store that
+                // in the closure as the function body's address.
+                let mut bytecode = vec![
+                    Instruction::LDF(0, 1, num_of_declarations),
+                    Instruction::ASSIGN(func_index),
+                    Instruction::GOTOR(body_bytecode.len() + 1),
+                ];
+                bytecode.extend(body_bytecode);
+                bytecode.extend(self.compile_drops(position, drop_at)?);
+
+                // Before wrapping up, pop the declarations out.
+                undo_index_table_changes(index_table, num_of_declarations);
+
+                // TODO: Add RTN?
+
+                Ok(bytecode)
+            },
             Stmt::ExprStmt(expr) => {
                 let mut bytecode = expr.compile(drop_at, index_table)?;
                 bytecode.push(Instruction::POP); // TODO: Do we need this?
@@ -166,7 +233,11 @@ impl Compile for Expr {
                 bytecode.extend(self.compile_drops(position, drop_at)?);
                 Ok(bytecode)
             },
-            Expr::BlockExpr(block, position) => Ok(vec![]),
+            Expr::BlockExpr(block, position) => {
+                let mut bytecode = block.compile(drop_at, index_table)?;
+                bytecode.extend(self.compile_drops(position, drop_at)?);
+                Ok(bytecode)
+            },
             Expr::PrimitiveOperationExpr(op, position) => {
                 let mut bytecode = op.compile(drop_at, index_table)?;
                 bytecode.extend(self.compile_drops(position, drop_at)?);
@@ -185,6 +256,24 @@ impl Compile for Expr {
             expr@Expr::ApplicationExpr { .. } => Ok(vec![]),
             expr@Expr::ReturnExpr(expr_to_return, position) => Ok(vec![]),
         }
+    }
+}
+
+impl Compile for SequenceStmt {
+    fn compile(&self, drop_at: &ExpiredLifetimes, index_table: &mut IndexTable) -> CompileResult {
+        match self {
+            SequenceStmt::Stmt(stmt) => stmt.compile(drop_at, index_table),
+            SequenceStmt::Block(block) => block.compile(drop_at, index_table),
+        }
+    }
+}
+
+impl Compile for Block {
+    fn compile(&self, drop_at: &ExpiredLifetimes, index_table: &mut IndexTable) -> CompileResult {
+        self.statements
+            .iter()
+            .map(|seq_stmt| seq_stmt.compile(drop_at, index_table))
+            .fold(Ok(vec![]), accumulate_bytecode)
     }
 }
 
