@@ -76,6 +76,20 @@ fn scan_declaration_names(stmts: &Vec<Stmt>) -> Result<Vec<String>> {
         })
 }
 
+fn scan_declaration_names_from_block(block: &Block) -> Result<Vec<String>> {
+    let stmts_in_block: Vec<Stmt> = block.statements
+        .iter()
+        .fold(vec![], |mut stmts, seq_stmt| match seq_stmt {
+            SequenceStmt::Stmt(stmt) => {
+                stmts.push(stmt.clone());
+                stmts
+            },
+            _ => stmts,
+        });
+
+    scan_declaration_names(&stmts_in_block)
+}
+
 fn get_identifier_name(expr: &Expr) -> Result<String> {
     match expr {
         Expr::IdentifierExpr(name, position) => Ok(name.clone()),
@@ -154,55 +168,31 @@ impl Compile for Stmt {
                 })
             },
             Stmt::FuncDeclaration { name, parameters, body, position, .. } => {
-                let filtered_body: Vec<Stmt> = body.statements
-                    .iter()
-                    .fold(vec![], |mut stmts, seq_stmt| match seq_stmt {
-                        SequenceStmt::Stmt(stmt) => {
-                            stmts.push(stmt.clone());
-                            stmts
-                        },
-                        _ => stmts,
-                    });
+                let num_of_params = parameters.len();
 
-                let locals = scan_declaration_names(&filtered_body)?;
-                let params = parameters
+                parameters
                     .iter()
                     .map(|(expr, _)| get_identifier_name(expr))
-                    .collect::<Result<Vec<String>>>()?;
-                let mut declarations = params;
-                declarations.extend(locals);
-
-                let num_of_declarations = declarations.len();
-
-                declarations
+                    .collect::<Result<Vec<String>>>()?
                     .into_iter()
                     .for_each(|name| {
                         index_table.push_front((name, index_table.len()));
                     });
-                // println!("-----------");
-                // for (name, index) in index_table.iter() {
-                //     println!("{:#?}, {:#?}", name, index);
-                // }
 
                 let body_bytecode = body.compile(drop_at, index_table)?;
 
                 let func_name = get_identifier_name(name)?;
                 let func_index = index_of(index_table, &func_name, Some(position.clone()))?;
 
-                // It should be possible to compute and store PC(LDF) + 1 and store that
-                // in the closure as the function body's address.
+                undo_index_table_changes(index_table, num_of_params);
+
                 let mut bytecode = vec![
-                    Instruction::LDF(0, 1, num_of_declarations),
+                    Instruction::LDF(0, 3, num_of_params),
                     Instruction::ASSIGN(func_index),
                     Instruction::GOTOR(body_bytecode.len() + 1),
                 ];
                 bytecode.extend(body_bytecode);
                 bytecode.extend(self.compile_drops(position, drop_at)?);
-
-                // Before wrapping up, pop the declarations out.
-                undo_index_table_changes(index_table, num_of_declarations);
-
-                // TODO: Add RTN?
 
                 Ok(bytecode)
             },
@@ -270,10 +260,29 @@ impl Compile for SequenceStmt {
 
 impl Compile for Block {
     fn compile(&self, drop_at: &ExpiredLifetimes, index_table: &mut IndexTable) -> CompileResult {
-        self.statements
+        let locals = scan_declaration_names_from_block(self)?;
+        let num_of_locals = locals.len();
+
+        locals
+            .into_iter()
+            .for_each(|name| {
+                index_table.push_front((name, index_table.len()));
+            });
+
+        let block_bytecode = self.statements
             .iter()
             .map(|seq_stmt| seq_stmt.compile(drop_at, index_table))
-            .fold(Ok(vec![]), accumulate_bytecode)
+            .fold(Ok(vec![]), accumulate_bytecode)?;
+
+        undo_index_table_changes(index_table, num_of_locals);
+
+        let mut bytecode = vec![
+            Instruction::LDF(0, 2, num_of_locals),
+            Instruction::CALL(0),
+        ];
+        bytecode.extend(block_bytecode);
+
+        Ok(bytecode)
     }
 }
 
