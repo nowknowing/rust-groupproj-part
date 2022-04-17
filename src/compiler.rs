@@ -133,7 +133,11 @@ fn undo_index_table_changes(index_table: &mut IndexTable, undo_times: usize) {
 
 fn compile_top_level(stmt: &Stmt, drop_at: &ExpiredLifetimes, index_table: &mut IndexTable) -> CompileResult {
     match stmt {
-        Stmt::FuncDeclaration { position, .. } => stmt.compile(drop_at, index_table),
+        Stmt::FuncDeclaration { .. } => {
+            let mut bytecode = stmt.compile(drop_at, index_table)?;
+            bytecode.push(Instruction::POP);
+            Ok(bytecode)
+        },
         _ => Err(Error {
             message: String::from("Only function declarations are allowed at the top-level"),
             position: None,
@@ -154,11 +158,14 @@ impl Compile for Stmt {
         match self {
             Stmt::LetStmt { name, value, position, .. } => match value {
                 Some(expr) => {
-                    let mut bytecode = expr.compile(drop_at, index_table)?;
                     let name = get_identifier_name(name)?;
                     let index = index_of(index_table, &name, Some(position.clone()))?;
+
+                    let mut bytecode = expr.compile(drop_at, index_table)?;
                     bytecode.push(Instruction::ASSIGN(index));
                     bytecode.extend(self.compile_drops(position, drop_at)?);
+                    bytecode.push(Instruction::LDCU);
+
                     Ok(bytecode)
                 },
                 None => Err(Error {
@@ -193,15 +200,18 @@ impl Compile for Stmt {
                 ];
                 bytecode.extend(body_bytecode);
                 bytecode.extend(self.compile_drops(position, drop_at)?);
+                bytecode.push(Instruction::LDCU);
 
                 Ok(bytecode)
             },
-            Stmt::ExprStmt(expr) => {
-                let mut bytecode = expr.compile(drop_at, index_table)?;
-                bytecode.push(Instruction::POP); // TODO: Do we need this?
+            Stmt::ExprStmt(expr) => match expr {
                 // Expression has position, so it will handle the drops.
-                // bytecode.extend(self.compile_drops(position, drop_at)?);
-                Ok(bytecode)
+                Expr::ReturnExpr(..) => expr.compile(drop_at, index_table),
+                _ => {
+                    let mut bytecode = expr.compile(drop_at, index_table)?;
+                    bytecode.extend(vec![Instruction::POP, Instruction::LDCU]);
+                    Ok(bytecode)
+                }
             },
             _ => Err(Error {
                 message: String::from("The given statement type is presently unsupported"),
@@ -244,7 +254,12 @@ impl Compile for Expr {
                 Ok(bytecode)
             },
             expr@Expr::ApplicationExpr { .. } => Ok(vec![]),
-            expr@Expr::ReturnExpr(expr_to_return, position) => Ok(vec![]),
+            Expr::ReturnExpr(expr_to_return, position) => {
+                let mut bytecode = expr_to_return.compile(drop_at, index_table)?;
+                bytecode.extend(self.compile_drops(position, drop_at)?);
+                bytecode.push(Instruction::RTN);
+                Ok(bytecode)
+            },
         }
     }
 }
@@ -271,7 +286,20 @@ impl Compile for Block {
 
         let block_bytecode = self.statements
             .iter()
-            .map(|seq_stmt| seq_stmt.compile(drop_at, index_table))
+            .enumerate()
+            .map(|(index, seq_stmt)| 
+                match seq_stmt.compile(drop_at, index_table) {
+                    Ok(mut bytecode) => match seq_stmt {
+                        SequenceStmt::Stmt(_) => {
+                            if index < self.statements.len() - 1 {
+                                bytecode.push(Instruction::POP);
+                            }
+                            Ok(bytecode)
+                        },
+                        SequenceStmt::Block(_) => Ok(bytecode),
+                    },
+                    err@Err(_) => err,
+            })
             .fold(Ok(vec![]), accumulate_bytecode)?;
 
         undo_index_table_changes(index_table, num_of_locals);
@@ -281,6 +309,14 @@ impl Compile for Block {
             Instruction::CALL(0),
         ];
         bytecode.extend(block_bytecode);
+
+        match bytecode.last() {
+            Some(instr) => match instr {
+                Instruction::RTN => (),
+                _ => bytecode.push(Instruction::RTN),
+            },
+            None => bytecode.extend(vec![Instruction::LDCU, Instruction::RTN]),
+        };
 
         Ok(bytecode)
     }
