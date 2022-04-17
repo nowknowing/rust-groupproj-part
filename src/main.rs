@@ -1,9 +1,11 @@
 mod parser;
 mod static_checker;
+mod compiler;
 
 use std::env;
 use std::fs;
 use std::process;
+use std::collections::HashMap;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -13,16 +15,8 @@ fn main() {
     }
 
     let source = fs::read_to_string(&args[1]).expect("Unable to read file");
-    let result = parser::parse(&source);    
-    //let ast = parser::parse(&source).expect("Failed to parse given program");
-    
-/*
-    match result {
-        Ok(v) => static_checker::get_main(&v),
-        _=> println!("{:#?}", result),
-
-    }
-    */
-    
-    println!("{:#?}", result);
+    let ast = parser::parse(&source).expect("Failed to parse given program");
+    static_checker::check(&ast);
+    let bytecode = compiler::compile(&ast, &HashMap::new());
+    println!("{:#?}", bytecode);
 }

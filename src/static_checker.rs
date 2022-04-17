@@ -4,7 +4,7 @@ use crate::parser::ast::
     PrimitiveOperation, UnaryOperator, BinaryOperator};
 use std::collections::{HashMap, LinkedList};
 
-fn check(parsed_stmt : & Vec<Stmt>) -> ExpiredLifetimes{
+pub fn check(parsed_stmt : & Vec<Stmt>) -> ExpiredLifetimes{
     let mut d_f_table : HashMap<&'static str, FunctionStore> = HashMap::new();
     let mut scope : LinkedList<DecAndBorrowStack> = LinkedList::new();
     let mut v_table : HashMap<&'static str, VariableProperties> = HashMap::new();
