@@ -253,7 +253,23 @@ impl Compile for Expr {
 
                 Ok(bytecode)
             },
-            expr@Expr::ApplicationExpr { .. } => Ok(vec![]),
+            Expr::ApplicationExpr { callee, arguments, position, .. } => {
+                // Closures (also known as anonymous functions in Rust) are presently not supported.
+                // For now, all callees would be identifiers (named).
+                let func_name = get_identifier_name(&callee)?;
+                let func_index = index_of(index_table, &func_name, Some(*position))?;
+
+                let arg_bytecode = arguments
+                    .iter()
+                    .map(|arg| arg.compile(drop_at, index_table))
+                    .fold(Ok(vec![]), accumulate_bytecode)?;
+
+                let mut bytecode = vec![Instruction::LD(func_index)];
+                bytecode.extend(arg_bytecode);
+                bytecode.push(Instruction::CALL(arguments.len()));
+
+                Ok(bytecode)
+            },
             Expr::ReturnExpr(expr_to_return, position) => {
                 let mut bytecode = expr_to_return.compile(drop_at, index_table)?;
                 bytecode.extend(self.compile_drops(position, drop_at)?);
