@@ -267,6 +267,7 @@ impl Compile for Expr {
                 let mut bytecode = vec![Instruction::LD(func_index)];
                 bytecode.extend(arg_bytecode);
                 bytecode.push(Instruction::CALL(arguments.len()));
+                bytecode.extend(self.compile_drops(position, drop_at)?);
 
                 Ok(bytecode)
             },
