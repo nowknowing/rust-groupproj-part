@@ -1,8 +1,10 @@
 mod parser;
+mod compiler;
 
 use std::env;
 use std::fs;
 use std::process;
+use std::collections::HashMap;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -12,6 +14,7 @@ fn main() {
     }
 
     let source = fs::read_to_string(&args[1]).expect("Unable to read file");
-    let result = parser::parse(&source);
-    println!("{:#?}", result);
+    let ast = parser::parse(&source).expect("Failed to parse given program");
+    let bytecode = compiler::compile(&ast, &HashMap::new());
+    println!("{:#?}", bytecode);
 }
