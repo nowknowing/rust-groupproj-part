@@ -4,29 +4,89 @@ use crate::parser::ast::
     PrimitiveOperation, UnaryOperator, BinaryOperator};
 use std::collections::{HashMap, LinkedList};
 
-pub fn get_main(parsed_stmt : &Vec<Stmt>) {// assume there's only one top-level main function
-let main_fn :& Stmt = & (*parsed_stmt)[0];
-    if is_function_declaration(main_fn) {
-      let ptr_to_first_seq_stmt= & (*function_declaration_body(main_fn))[0];
-      let it_is_expr = is_expression_statement(sequence_statement(ptr_to_first_seq_stmt));
-      println!("IT IS EXPR STMT {}", it_is_expr);
+fn check(parsed_stmt : & Vec<Stmt>) -> ExpiredLifetimes{
+    let mut d_f_table : HashMap<&'static str, FunctionStore> = HashMap::new();
+    let mut scope : LinkedList<DecAndBorrowStack> = LinkedList::new();
+    let mut v_table : HashMap<&'static str, VariableProperties> = HashMap::new();
+    let mut exp_lt : ExpiredLifetimes = ExpiredLifetimes::new();
+    let mut env = Environment{
+        declared_functions_table : d_f_table,
+        scope_info : scope,
+        variables_table : v_table,
+        expired_lifetimes : exp_lt,
+    };
+    // let all be in the main function.
+    let main_fn : &Stmt = & (*parsed_stmt)[0];
+    type_statement(main_fn, &mut env);
+    return env.expired_lifetimes;
+}
+
+type ExpiredLifetimes = HashMap<usize, Vec<String>>;
+type FunctionStore = (Vec<DataType>, DataType);
+type DecAndBorrowStack = (Vec<&'static str>, LinkedList<&'static str>);
+struct Environment {
+    declared_functions_table : HashMap<&'static str, FunctionStore>,
+    scope_info: LinkedList<DecAndBorrowStack>,
+    variables_table : HashMap<&'static str, VariableProperties>,
+    expired_lifetimes : ExpiredLifetimes,
+}
+
+struct VariableProperties{
+    own_type : DataType,
+    mutability : bool,
+    is_copy_trait_mem : bool,
+    // not accounting for immutable borrows for now
+}
+
+fn check_duplicate(name : & String, env : &mut Environment) {
+    for (fn_name, value) in env.declared_functions_table.iter() {
+        if (*fn_name).eq(name.as_str()) {
+            panic!("Duplicate name: {} already declared", name);
+        }
+    }
+    for (var_name, value) in env.variables_table.iter() {
+        if (*var_name).eq(name.as_str()) {
+            panic!("Duplicate name: {} already declared", name);
+        }
     }
 }
 
+fn insert_expired_lifetime(env : &mut Environment, line_no : usize, var_name : &str) {
+    match env.expired_lifetimes.get_mut(&line_no) {
+        Some(vars) => {let o = vars.push(String::from(var_name));
+        },
+        None => {let o = env.expired_lifetimes.insert(line_no, vec![String::from(var_name)]);
+        },
+    }
+}
 
-//BlockExpr(content of main)
-//at every =, check type of val equals type of name.
-// let will not have type declaration
-type ExpiredLifetimes = HashMap<usize, Vec<String>>;
-type Environment = LinkedList<u64>;
+fn update_scope_with_use(env : &mut Environment, var_name : &str) {
 
+}
+
+fn update_scope_with_drop(env : &mut Environment, var_name : &str) {
+
+}
+
+fn handle_stack(rhs : &Expr, env : &mut Environment) {
+    if is_identifier_expression(rhs) {
+        let name = identifier(rhs).as_str();
+        let rhs_datatype = & env.variables_table.get(name).unwrap().own_type;
+        if is_mem_type(rhs_datatype) { // rhs is some memory
+            //drop type. then remove RHS.
+            if !is_copy_type(rhs_datatype) {
+                insert_expired_lifetime(env, rhs.get_source_location().line, identifier(rhs));
+            }
+        }
+    }
+}
 fn type_statement(stmt : &  Stmt, env : &mut  Environment)  -> DataType {
     if is_let_statement(stmt) {
         let name = let_statement_name(stmt);
-        //check_duplicate(name, env); // check for duplicate in scope.
+        check_duplicate(name, env); // check for duplicate in scope.
 
         let rhs = non_optional_value(let_statement_value(stmt));
-        //handle_stack(rhs, env); // handle right hand side uses only. MODIFIES STACK
+        handle_stack(rhs, env); // handle right hand side uses only. MODIFIES STACK
 
         let type_of_variable = type_expression(non_optional_value(let_statement_value(stmt)), env);
         //let degree = degree(non_optional_value(let_statement_value(stmt)), env);
@@ -42,7 +102,7 @@ fn type_statement(stmt : &  Stmt, env : &mut  Environment)  -> DataType {
         let params = function_declaration_parameters(stmt);
         let return_type = function_declaration_return_type(stmt); // Unit if returns nothing.
 
-        //set_function(function_name, params, return_type);
+        //set_function(function_name, params, return_type, env);
         return DataType::Unit;
     } else if is_expression_statement(stmt) {
         return type_expression(expression_statement(stmt), env);
@@ -51,6 +111,9 @@ fn type_statement(stmt : &  Stmt, env : &mut  Environment)  -> DataType {
     }
 }
 
+//fn set_function(function_name : & String,
+  //   params : & Vec<FuncParameter>, return_type : & DataType, env : &mut Environment) {
+    //     env.
 fn type_expression(expr : &  Expr, env : & mut Environment) -> DataType {
     if is_identifier_expression(expr) {
        unimplemented!();
@@ -71,15 +134,121 @@ fn type_expression(expr : &  Expr, env : & mut Environment) -> DataType {
         let mut seq_copy = statements_of_block(block_of_expression(expr)).clone();
         let (dt, hs) = type_and_handle_sequence(&mut seq_copy, env);
         return dt;
+    } else if is_primitive_operation_expression(expr) {
+        match expr {
+            Expr::PrimitiveOperationExpr(op, position) => DataType::Unit, // TODO //op.typecheck(env),
+            _ => panic!("")
+        }
     } else if is_return_expression(expr) {
         return type_expression(return_expression(expr), env); // MUST DO
     } else if is_function_application_expression(expr) {
         unimplemented!();
-        // type_application(function_name(expr), function_arguments(expr), env);
+        //type_application(function_name(expr), function_arguments(expr), env);
     } else {
         panic!("Type Error at {:#?} for {:#?}", expr.get_source_location(), expr);
     }
 }
+
+/*
+fn type_application(
+    function_name: & String,
+    function_arguments : & Vec<Expr>,
+     env: &mut Environment) -> DataType{
+         
+
+}
+*/
+
+fn is_mem_type(datatype : &DataType) -> bool {
+    match datatype{
+        DataType::Ref(..) | DataType::MutRef(..) => return false,
+        _ => return true,
+    }
+}
+
+fn is_copy_type(datatype : &DataType) -> bool {
+    match datatype{
+        DataType::Int64 | DataType::Bool | DataType::Str => return true,
+        _ => return false,
+    }
+}
+
+trait TypeCheck {
+    fn typecheck(&self, env: &mut Environment) -> DataType;
+}
+
+
+/* parser incorrect
+impl TypeCheck for PrimitiveOperation {
+    fn typecheck(&self, env: &mut Environment) -> DataType {
+        match self {
+            PrimitiveOperation::UnaryOperation { operator, operand } => match operator {
+                UnaryOperator::Not => match type_expression(operand, env) {
+                    DataType::Bool => return DataType::Bool,
+                    _ => panic!("Expect bool operand for not operation"),
+                },
+                UnaryOperator::UnaryMinus => match type_expression(operand, env) {
+                    DataType::Int64 => return  DataType::Int64,
+                    _ => panic!("Expect i64 for unary minus operation"),
+                },
+                UnaryOperator::ImmutableBorrow => match type_expression(operand, env) {
+                    DataType::Func(..) => panic!("References to functions are currently unsupported"),
+                    datatype@_ => return DataType::Ref(None, Box::new(datatype))
+                },
+                UnaryOperator::MutableBorrow => match type_expression(operand, env) {
+                    DataType::Func(..) => panic!("Mutable references to functions are currently unsupported"),
+                    datatype@_ => return DataType::MutRef(None, Box::new(datatype))
+                },
+                UnaryOperator::Dereference => match type_expression(operand, env) {
+                    DataType::Ref(_, dereferenced_type) => return *dereferenced_type,
+                    DataType::MutRef(_, dereferenced_type) => return *dereferenced_type,
+                    _ => panic!("Dereferencing can only be performed on a mutable or immutable borrow"),
+                },
+                UnaryOperator::StringFrom => match type_expression(operand, env) {
+                    DataType::Ref(_, boxed_type) => match *boxed_type {
+                        DataType::Str => return DataType::String,
+                        _ => panic!("Expect &str for string_from operation"),
+                    },
+                    _ => panic!("Expect &str for string_from operation"),
+                },
+                UnaryOperator::Len => match type_expression(operand, env) {
+                    DataType::Ref(_, boxed) => match *boxed {
+                        DataType::Str => return DataType::Int64,
+                        _ => panic!("none found in the boxed"),
+                    }
+                    DataType::String => DataType::Int64,
+                    _ => panic!("Expect &str or String for len operation"),
+                },
+                UnaryOperator::AsStr => match type_expression(operand, env) {
+                    
+                },,
+                UnaryOperator::PushStr => panic!("parser mistaken. Push_str not supported."),
+                UnaryOperator::Drop => unimplemented!(),
+            },
+            PrimitiveOperation::BinaryOperation { operator, first_operand, second_operand } => {
+                match operator {
+                    BinaryOperator::Plus => vec![Instruction::PLUS],
+                    BinaryOperator::Minus => vec![Instruction::MINUS],
+                    BinaryOperator::Times => vec![Instruction::TIMES],
+                    BinaryOperator::Divide => vec![Instruction::DIV],
+                    BinaryOperator::Equal => vec![Instruction::EQUAL],
+                    BinaryOperator::NotEqual => vec![Instruction::EQUAL, Instruction::NOT],
+                    BinaryOperator::Greater => vec![Instruction::GREATER],
+                    BinaryOperator::GreaterOrEqual => vec![Instruction::GEQ],
+                    BinaryOperator::Less => vec![Instruction::LESS],
+                    BinaryOperator::LessOrEqual => vec![Instruction::LEQ],
+                    BinaryOperator::And => vec![Instruction::AND],
+                    BinaryOperator::Or => vec![Instruction::OR],
+                }
+            }
+            PrimitiveOperation::VariadicOperation { operator, operands } => 
+                match type_check(operands, env) {
+                    VariadicOperator::Println => unimplemented!(),
+                }
+        }
+    }
+}
+*/
 
 
 //MUST HAVE RETURN STATEMENT SOMEWHERE. OTHERWISE RETURN NONE.
@@ -484,7 +653,6 @@ fn sequence_block(sequence_stmt : & SequenceStmt) -> & Block {
     }
 }
 
-type FunctionStore = (String, Vec<DataType>, DataType);
 
 
 /*
