@@ -1,0 +1,107 @@
+\documentclass[11pt]{article}
+
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{hyperref}
+
+\title{Oxido - Static Semantics}
+\author{
+    Shion Sunaga
+    \and
+    Chua Bing Quan
+}
+\date{Last updated: \today}
+
+\begin{document}
+    \maketitle
+
+    \section*{Preliminaries}
+    \begin{align*}
+        \dfrac{}{\Gamma \vdash x : \Gamma(x)} \ \textbf{[VarT]} & \quad
+        \dfrac{}{\Gamma \vdash r : \text{\&}t} \ \textbf{[RefT]} & \quad
+        \dfrac{}{\Gamma \vdash m : \text{mut }t} \ \textbf{[MutT]}
+    \end{align*}
+
+    \section*{Constants}
+    \begin{align*}
+        \dfrac{}{\Gamma \vdash n : \text{Int64}} \ \textbf{[Int32T]} & \quad
+        \dfrac{}{\Gamma \vdash true : \text{Bool}} \ \textbf{[TrueT]} &
+        \dfrac{}{\Gamma \vdash false : \text{Bool}} \ \textbf{[FalseT]}
+    \end{align*}
+    \begin{align*}
+        \dfrac{}{\Gamma \vdash u : ()} \ \textbf{[UnitT]}
+    \end{align*}
+
+    \section*{Unary Primitive Operations}
+    \begin{align*}
+        \dfrac{\Gamma \vdash E:t_1}{\Gamma \vdash p[E] : t} \ \textbf{[Prim$_1$T]}
+    \end{align*}
+
+    \begin{flushleft}
+        where types $t_1$ and $t$ are given by the following table. \newline
+
+        \begin{tabular}{|c|c|c|}
+            \hline
+            $p$ & $t_1$ & $t$ \\ \hline
+            $!$ & Bool & Bool \\ \hline
+            $*$ & \&$t$ & $t$ \\ \hline
+            $StringFrom$ & \&Str & String \\ \hline
+            $Len$ & String & $Int64$ \\ \hline
+            $Len$ & \&Str & $Int64$ \\ \hline
+            $AsStr$ & \&Str & String \\ \hline
+        \end{tabular}
+    \end{flushleft}
+
+    \section*{Binary Primitive Operations}
+    \begin{align*}
+        \dfrac{\Gamma \vdash E_1 : t_a \in \{t_1, \text{mut }t_1\} \quad \Gamma \vdash E_2 : t_b \in \{t_2, \text{mut }t_2\}}{\Gamma \vdash p[E_1,E_2] : t} \ \textbf{[Prim$_2$T]}
+    \end{align*}
+
+    \begin{flushleft}
+        where types $t_1$, $t_2$, and $t$ are given by the following table. \newline
+
+        \begin{tabular}{|c|c|c|c|}
+            \hline
+            $p$ & $t_1$ & $t_2$ & $t$ \\ \hline
+            $+$ & Int64 & Int64 & Int64 \\ \hline
+            $-$ & Int64 & Int64 & Int64 \\ \hline
+            $*$ & Int64 & Int64 & Int64 \\ \hline
+            $\&\&$ & Bool & Bool & Bool \\ \hline
+            $||$ & Bool & Bool & Bool \\ \hline
+            $==$ & Bool & Bool & Bool \\ \hline
+            $<$ & Bool & Bool & Bool \\ \hline
+            $\leq$ & Bool & Bool & Bool \\ \hline
+            $>$ & Bool & Bool & Bool \\ \hline
+            $\geq$ & Bool & Bool & Bool \\ \hline
+            $p$ & $t_1$ & $t_2$ & $t$ \\ \hline
+            $PushStr$ & String & \&Str & String \\ \hline
+        \end{tabular}
+    \end{flushleft}
+
+    \section*{Statements}
+    \begin{align*}
+        \dfrac{\Gamma \vdash E_1: t_a \quad \Gamma \vdash E_2 : t_a \quad \text{s.t.} \ t_a \in \{t, \text{mut }t\}}
+        {\Gamma \vdash \text{let} \ E_1 = E_2; \, : ()} \ \textbf{[Assign$_1$T]}
+    \end{align*}
+    \begin{align*}
+        \dfrac{\Gamma \vdash E_1: \text{mut } t \quad \Gamma \vdash E_2 : t_a \in \{t, \text{mut }t\}}
+        {\Gamma \vdash E_1 = E_2; \, : ()} \ \textbf{[Assign$_2$T]}
+    \end{align*}
+    \begin{align*}
+        \dfrac{\Gamma \vdash E: t}{\Gamma \vdash E; \, : ()} \ \textbf{[ExprStmtT]}
+    \end{align*}
+
+    \begin{flushleft}
+        Currently undefined are \textit{SequenceT} and \textit{ReturnT}.
+    \end{flushleft}
+
+    \section*{Functions}
+    Current undefined are \textit{FuncDeclT} and \textit{FuncAppT}.
+
+    \section*{Ownership}
+    To be defined. Possible research areas are ``move semantics" and ``affine types".
+
+    \section*{Lifetimes}
+    To be defined. A possible research source is the \href{https://doc.rust-lang.org/stable/nomicon/}{Rustonomicon}.
+
+\end{document}

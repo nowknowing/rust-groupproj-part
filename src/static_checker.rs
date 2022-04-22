@@ -36,6 +36,7 @@ struct VariableProperties{
     mutability : bool,
     is_copy_trait_mem : bool,
     // not accounting for immutable borrows for now
+    // immutable borrows require check on mutability bool. nothing additional.
 }
 
 fn check_duplicate(name : & String, env : &mut Environment) {
