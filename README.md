@@ -1,13 +1,5 @@
 # oxido-lang
-<!-- Output copied to clipboard! -->
 
-<!-- You have some errors, warnings, or alerts. If you are using reckless mode, turn it off to see inline alerts.
-* ERRORs: 0
-* WARNINGs: 0
-* ALERTS: 13 -->
-
-
-     \
 
 
 <h2>Developer's Guide</h2>
@@ -48,19 +40,19 @@ The following shows the static semantics that the type checking ensures (nothing
 
 
     
-![alt_text](images/image4.png "image_tooltip")
+![alt_text](images/image4.jpg "image_tooltip")
 
 
 
     
-![alt_text](images/image5.png "image_tooltip")
+![alt_text](images/image5.jpg "image_tooltip")
 
 
 
-    Slightly noteworthy above is the restriction we have made to our scope, such that assignments cannot be made to a borrow or dereference to a non-variable literal.
+Slightly noteworthy above is the restriction we have made to our scope, such that assignments cannot be made to a borrow or dereference to a non-variable literal.
 
 
-    That is, "let a = & 3;" is not supported, while "let a = 3; let b = &a;" is. 
+That is, "let a = & 3;" is not supported, while "let a = 3; let b = &a;" is. 
 
 
     
@@ -70,7 +62,7 @@ The following shows the static semantics that the type checking ensures (nothing
 
 ![alt_text](images/image7.png "image_tooltip")
 
-![alt_text](images/image8.jpg "image_tooltip")
+![alt_text](images/image8.png "image_tooltip")
 
 
 
