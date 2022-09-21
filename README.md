@@ -2,17 +2,14 @@
 
 
 
-<h2>Developer's Guide</h2>
-
-
 <h3>
     Introduction</h3>
 
 
 
 
-    1. Parser
-    2. Static Checker
+##  1. Parser
+##  2. Static Checker
 
 The static checker functions to statically check two things : 1) type correctness and 2)ownership-lifetime compatibility. The former is defined under the static semantics common to many programming languages. The only notable point in the static semantics for this Rust subset is that in addition to the usual variable-type binding context, that is, there is a variable mutability context. Essentially, the type checking requires additional information of whether every variable is mutable or immutable, so the environment stores this information.
 
@@ -164,6 +161,5 @@ The static checker returns
 The line after which the variable and the memory it points to must be cleared.
 
 
-
-    3. Compiler
-    4. VM
+## 3. Compiler
+## 4. VM
